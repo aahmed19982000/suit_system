@@ -1,68 +1,90 @@
-/* base.css - التنسيقات الأساسية */
-/* ===== نظام الرسائل ===== */
+/* base.css - التنسيقات الأساسية (النمط الفاخر الداكن) */
+
+/* ===== نظام الرسائل (Messages) ===== */
 .system-messages {
   position: fixed;
   top: 20px;
   left: 20px;
-  right: 300px;
+  right: 300px; /* يتناسب مع عرض السايد بار */
   z-index: 9999;
   max-width: 500px;
   margin: 0 auto;
 }
 
 .message {
-  background: white;
-  border-radius: 8px;
-  padding: 15px 20px;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: #1a1a1a; /* خلفية داكنة للرسالة */
+  border-radius: 12px;
+  padding: 18px 25px;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* ظلال عميقة */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-right: 4px solid #4CAF50;
+  border-right: 5px solid #a4854c; /* الحاشية بلون ذهبي افتراضي */
+  backdrop-filter: blur(10px);
+  border: 1px solid #333; /* إطار خفيف جداً */
+  animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .message.success {
-  border-right-color: #4CAF50;
+  border-right-color: #10b981; /* أخضر زمردي للنجاح */
 }
 
 .message.error {
-  border-right-color: #f44336;
+  border-right-color: #ef4444; /* أحمر للخطأ */
 }
 
 .message.warning {
-  border-right-color: #ff9800;
+  border-right-color: #f59e0b; /* برتقالي للتنبيه */
 }
 
 .message.info {
-  border-right-color: #2196f3;
+  border-right-color: #3b82f6; /* أزرق للمعلومات */
 }
 
 .message-text {
   flex: 1;
-  color: #333;
-  font-weight: 500;
+  color: #ffffff !important; /* نص أبيض صريح للرؤية */
+  font-weight: 600;
+  font-family: 'Cairo', sans-serif;
+  font-size: 0.95rem;
 }
 
 .close {
   background: none;
   border: none;
-  color: #666;
+  color: #94a3b8; /* لون رمادي باهت للإغلاق */
   font-size: 24px;
   cursor: pointer;
   padding: 0;
-  margin-right: 10px;
+  margin-right: 15px;
   line-height: 1;
+  transition: color 0.2s;
 }
 
 .close:hover {
-  color: #333;
+  color: #ffffff;
 }
 
-/* ===== المحتوى الرئيسي ===== */
+/* ===== المحتوى الرئيسي (Main Content) ===== */
 .main-content {
+  background-color: #0a0a0a; /* أسود صريح للخلفية */
   padding: 30px;
   min-height: calc(100vh - 40px);
+  color: #ffffff; /* جميع النصوص داخل المحتوى بيضاء افتراضياً */
+}
+
+/* تنسيق عام للحقول داخل البيز لضمان وضوحها */
+.main-content label {
+  color: #ffffff !important;
+  margin-bottom: 8px;
+  display: inline-block;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {
@@ -78,7 +100,7 @@
   }
 }
 
-/* ===== طبقة التعتيم ===== */
+/* ===== طبقة التعتيم (Overlay) ===== */
 .overlay {
   display: none;
   position: fixed;
@@ -86,11 +108,26 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(3px);
+  background-color: rgba(0, 0, 0, 0.8); /* تعتيم أقوى */
+  backdrop-filter: blur(8px); /* زيادة ضبابية الخلفية لفخامة أكثر */
   z-index: 998;
 }
 
 .overlay.active {
   display: block;
+}
+
+/* تحسين السكرول بار العام للنظام الداكن */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a4854c;
 }

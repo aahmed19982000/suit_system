@@ -1,5 +1,5 @@
 from django.db import models
-from categories.models import Category_products ,Status_order , Unit_choices ,IngredientCategory
+from categories.models import Category_products ,Status_order , Unit_choices ,IngredientCategory , Size_choices , Colors_choices
 from django.conf import settings
 
 class Product(models.Model):
@@ -87,15 +87,30 @@ class Customer(models.Model):
         return self.name
     
 
+class Supplier(models.Model):
+    name= models.CharField(max_length=400, verbose_name="اسم المورد")
+    mobil=models.CharField(max_length=15)
+    address =models.CharField(max_length=1000, verbose_name="عنوان المورد")
+    number_of_supplies = models.PositiveIntegerField(default=0)
+
+
+    def __str__(self):
+        return self.name
 
 class InventoryItem(models.Model):
     name = models.CharField(max_length=200, verbose_name="اسم الصنف")
     category = models.ForeignKey(IngredientCategory, on_delete=models.CASCADE, related_name='items', verbose_name="الفئة")
+    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="الحجم",null=True,blank=True)
+    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون",null=True,blank=True)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الكمية الحالية")
     min_limit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="حد الطلب (الحد الأدنى)")
     unit =  models.ForeignKey(Unit_choices, on_delete=models.CASCADE, verbose_name="الوحدة")
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="سعر الوحدة")
+    supply_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="تكلفة التوريد", default=0)
+    profit= models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الربح المتوقع",default=0)
     updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
+    Supplier = models.ForeignKey(Supplier,on_delete=models.CASCADE,verbose_name="المورد",null=True,blank=True)
+    
 
     @property
     def total_value(self):

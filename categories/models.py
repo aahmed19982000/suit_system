@@ -87,3 +87,14 @@ class Unit_choices(models.Model):
     unit = models.CharField (max_length=100, verbose_name="وحدات التخزين")
     def __str__(self):
         return self.unit
+    
+
+class Size_choices(models.Model):
+    size = models.CharField (max_length=100, verbose_name="احجام المنتجات")
+    def __str__(self):
+        return self.size
+    
+class Colors_choices(models.Model):
+    color = models.CharField (max_length=100, verbose_name="الالوان المتاحة للمنتج")
+    def __str__(self):
+        return self.color

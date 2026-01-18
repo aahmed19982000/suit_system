@@ -1,61 +1,78 @@
-/* sidebar.css */
+/* sidebar.css - النمط الداكن الفاخر */
 :root {
-    --primary-orange: #e67e22;
-    --active-bg: #fff5eb;
-    --text-main: #2c3e50;
-    --text-muted: #95a5a6;
+    --accent-gold: #a4854c;      /* اللون الذهبي من الصورة */
+    --surface-dark: #111111;    /* أسود خفيف للقائمة */
+    --bg-active: #1c1c1c;       /* لون العنصر النشط */
+    --text-gold: #bc9c65;
+    --text-white: #ffffff;
+    --text-dim: #71717a;
     --sidebar-width: 280px;
 }
 
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
-    background: #ffffff;
+    background: #000000; /* خلفية سوداء صريحة حسب الصورة */
     display: flex;
     flex-direction: column;
-    border-left: 1px solid #f0f0f0;
+    border-left: 1px solid #1a1a1a;
     position: fixed;
-    right: 0; /* للعمل من اليمين لليسار */
+    right: 0;
     top: 0;
     font-family: 'Cairo', sans-serif;
+    z-index: 1000;
 }
 
 /* Header */
 .sidebar-header {
-    padding: 30px 20px;
+    padding: 35px 20px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-end; /* ليتناسب مع RTL */
     align-items: center;
     gap: 15px;
-    border-bottom: 1px solid #fcfcfc;
+    border-bottom: 1px solid #1a1a1a;
 }
 
-.store-name { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-main); }
-.store-branch { font-size: 0.8rem; margin: 0; color: var(--text-muted); }
+.store-name { 
+    font-size: 1.2rem; 
+    font-weight: 800; 
+    margin: 0; 
+    color: var(--text-white); 
+}
+
+.store-branch { 
+    font-size: 0.8rem; 
+    margin: 0; 
+    color: var(--text-dim); 
+}
 
 .logo-circle {
     width: 45px;
     height: 45px;
-    background: var(--active-bg);
-    border-radius: 50%;
+    background: var(--accent-gold); /* الدائرة الذهبية من الصورة */
+    border-radius: 12px; /* شكل المربع المنحني قليلاً */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
+    color: white;
+    box-shadow: 0 4px 15px rgba(164, 133, 76, 0.3);
 }
 
 /* Menu Navigation */
 .sidebar-menu {
     flex-grow: 1;
-    padding: 20px 10px;
+    padding: 25px 15px;
     overflow-y: auto;
 }
 
 .menu-title {
-    font-size: 0.75rem;
-    color: #bdc3c7;
-    margin: 20px 15px 10px 0;
-    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin: 25px 15px 10px 0;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .menu-items { list-style: none; padding: 0; margin: 0; }
@@ -64,25 +81,33 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding: 12px 15px;
+    padding: 14px 18px;
     text-decoration: none;
-    color: #7f8c8d;
-    border-radius: 12px;
-    margin-bottom: 5px;
-    transition: all 0.2s ease;
+    color: var(--text-dim);
+    border-radius: 14px;
+    margin-bottom: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
 }
 
-/* Active State */
+/* Active State - الحالة النشطة كما في صورة المخزن */
 .menu-items li a.active {
-    background-color: var(--active-bg);
-    color: var(--primary-orange);
+    background-color: var(--bg-active);
+    color: var(--accent-gold);
+    border-right: 4px solid var(--accent-gold); /* خط جانبي ذهبي */
+}
+
+.menu-items li a:hover:not(.active) {
+    background-color: #0d0d0d;
+    color: var(--text-white);
+    transform: translateX(-5px);
 }
 
 .menu-items li a .icon {
     order: 2; /* الأيقونة على اليسار في RTL */
+    margin-left: 0;
     margin-right: 15px;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
 }
 
 .menu-items li a .text {
@@ -94,48 +119,65 @@
 /* Badge */
 .badge {
     position: absolute;
-    right: 15px;
-    background: var(--primary-orange);
+    left: 15px; /* يظهر في الجهة المقابلة في RTL */
+    background: #ef4444; /* أحمر للتنبيهات */
     color: white;
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    border-radius: 50%;
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    border-radius: 20px;
     font-weight: bold;
 }
 
-/* User Section */
+/* User Section & Settings */
 .user-section {
     padding: 20px;
-    border-top: 1px solid #f9f9f9;
+    border-top: 1px solid #1a1a1a;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column; /* جعل الإعدادات وتسجيل الخروج تحت بعضهم */
+    gap: 10px;
 }
 
-.user-info-wrapper { display: flex; align-items: center; gap: 12px; }
+.user-info-wrapper { 
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-end;
+    gap: 12px; 
+    padding: 10px;
+}
 
 .user-avatar {
-    width: 40px;
-    height: 40px;
-    background: #f1c40f; /* لون برتقالي/أصفر للمستخدم */
-    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    background: #262626;
+    border: 1px solid #333;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: var(--accent-gold);
     font-weight: bold;
 }
 
-.user-name { font-size: 0.9rem; margin: 0; color: var(--text-main); }
-.user-role { font-size: 0.75rem; margin: 0; color: var(--text-muted); }
+.user-name { font-size: 0.9rem; margin: 0; color: var(--text-white); font-weight: 700; }
+.user-role { font-size: 0.75rem; margin: 0; color: var(--text-dim); }
 
 .logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background: none;
     border: none;
-    color: #bdc3c7;
-    font-size: 1.2rem;
+    color: #ff4d4d; /* أحمر لتسجيل الخروج كما في الصورة */
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    padding: 5px;
+    padding: 12px;
+    width: 100%;
+    transition: 0.2s;
 }
 
-.logout-btn:hover { color: #e74c3c; }
+.logout-btn:hover { 
+    background: rgba(239, 68, 68, 0.1); 
+    border-radius: 10px;
+}

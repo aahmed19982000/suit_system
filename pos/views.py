@@ -1,5 +1,6 @@
 from django.shortcuts import render
-from .models import Product , Customer
+from django.db import models
+from .models import Product , Customer , Supplier
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ProductForm
 from django.contrib import messages
@@ -151,21 +152,25 @@ def inventory_management(request):
     # جلب جميع الأصناف
     items = InventoryItem.objects.all().order_by('name')
     categories = IngredientCategory.objects.all()
-    
-    # جلب الوحدات لتكون متوافقة مع حقل ForeignKey في الموديل
     units = Unit_choices.objects.all()
+    
+    # --- إضافات جديدة لتتوافق مع الموديل ---
+    from .models import Supplier  # تأكد من استيراد الموديلات الصحيحة
+    from categories.models import Size_choices, Colors_choices 
+    
+    suppliers = Supplier.objects.all()
+    sizes = Size_choices.objects.all()
+    colors = Colors_choices.objects.all()
 
-    # 1. إحصائية إجمالي الأصناف
+    # الإحصائيات
     total_items_count = items.count()
+    # استخدام الخاصية is_low الموجودة في الموديل (تأكد من وجودها كـ property)
+    low_stock_count = items.filter(quantity__lte=models.F('min_limit')).count()
+    
+    # حساب القيمة الإجمالية (سعر الوحدة * الكمية)
+    inventory_value = sum(item.quantity * item.unit_cost for item in items)
 
-    # 2. إحصائية الأصناف المنخفضة
-    low_stock_items = [item for item in items if item.is_low]
-    low_stock_count = len(low_stock_items)
-
-    # 3. إحصائية قيمة المخزون الإجمالية
-    inventory_value = sum(item.total_value for item in items)
-
-    # فلترة حسب الفئة إذا تم اختيارها
+    # فلترة حسب الفئة
     category_filter = request.GET.get('category')
     if category_filter and category_filter != 'all':
         items = items.filter(category_id=category_filter)
@@ -173,10 +178,12 @@ def inventory_management(request):
     context = {
         'items': items,
         'categories': categories,
-        'units': units,  # أضفنا الوحدات هنا ليتم عرضها في modal الإضافة
+        'units': units,
+        'suppliers': suppliers, # مرسل للقالب
+        'sizes': sizes,         # مرسل للقالب
+        'colors': colors,       # مرسل للقالب
         'total_items_count': total_items_count,
         'low_stock_count': low_stock_count,
-        'low_stock_items': low_stock_items[:3],  
         'inventory_value': inventory_value,
         'selected_category': category_filter,
     }
@@ -186,31 +193,52 @@ def inventory_management(request):
 @role_required('manager')
 def add_inventory_item(request):
     try:
-        # استلام البيانات
-        name = request.POST.get('name')
-        category_id = request.POST.get('category')
-        unit_id = request.POST.get('unit') # استلام الـ ID الخاص بالوحدة
-        quantity = request.POST.get('quantity')
-        min_limit = request.POST.get('min_limit')
-        unit_cost = request.POST.get('unit_cost')
+        # 1. التعامل مع المورد أولاً
+        supplier_id = request.POST.get('Supplier')
+        supplier_phone = request.POST.get('supplier_phone_input')
+        supplier_name = request.POST.get('new_supplier_name')
 
-        # جلب الكائنات المرتبطة
-        category = get_object_or_404(IngredientCategory, id=category_id)
-        unit_obj = get_object_or_404(Unit_choices, id=unit_id)
-        
-        # إنشاء الصنف
+        # إذا لم يتم اختيار مورد من القائمة ولكن تم كتابة بيانات مورد جديد
+        if not supplier_id and supplier_phone and supplier_name:
+            new_sup, created = Supplier.objects.get_or_create(
+                phone=supplier_phone,
+                defaults={'name': supplier_name}
+            )
+            supplier_id = new_sup.id
+
+        # 2. استلام باقي بيانات الصنف
         InventoryItem.objects.create(
-            name=name,
-            category=category,
-            unit=unit_obj, # حفظ الكائن المربوط
-            quantity=quantity,
-            min_limit=min_limit,
-            unit_cost=unit_cost
+            name=request.POST.get('name'),
+            category_id=request.POST.get('category'),
+            unit_id=request.POST.get('unit'),
+            quantity=Decimal(request.POST.get('quantity', 0)),
+            min_limit=Decimal(request.POST.get('min_limit', 0)),
+            unit_cost=Decimal(request.POST.get('unit_cost', 0)),
+            supply_cost=Decimal(request.POST.get('supply_cost', 0)),
+            profit=Decimal(request.POST.get('profit', 0)),
+            Supplier_id=supplier_id if supplier_id else None,
+            size_id=request.POST.get('size') or None,
+            color_id=request.POST.get('color') or None,
         )
 
-        return JsonResponse({'status': 'success', 'message': 'تم إضافة الصنف بنجاح'})
+        messages.success(request, 'تم إضافة الصنف والمورد بنجاح')
+        return redirect('inventory_management')
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        messages.error(request, f'خطأ: {str(e)}')
+        return redirect('inventory_management')
+
+# AJAX للتحقق من وجود مورد بناءً على رقم الهاتف
+@login_required
+def check_supplier_by_phone(request):
+    phone = request.GET.get('phone')
+    supplier = Supplier.objects.filter(phone=phone).first() # تأكد أن اسم الحقل في موديل المورد هو phone
+    if supplier:
+        return JsonResponse({
+            'found': True, 
+            'id': supplier.id, 
+            'name': supplier.name
+        })
+    return JsonResponse({'found': False})
 
 @require_POST
 def update_inventory_quantity(request):

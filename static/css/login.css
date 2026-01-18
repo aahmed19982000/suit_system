@@ -1,17 +1,18 @@
-/* إعدادات عامة */
+/* login.css - البوابة الملكية لمتجر الفخامة */
 :root {
-    --primary-color: #e67e22; /* لون الفطائر الذهبي */
-    --secondary-color: #d35400;
-    --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-    --card-bg: #ffffff;
-    --text-main: #2d3436;
-    --text-muted: #636e72;
-    --shadow: 0 15px 35px rgba(0,0,0,0.1);
+    --primary-gold: #a4854c;      /* ذهبي فخم */
+    --secondary-gold: #bc9c65;    /* ذهبي فاتح */
+    --bg-dark: #09090b;           /* أسود عميق */
+    --surface-card: #121214;      /* لون الكرت الداكن */
+    --text-white: #ffffff;
+    --text-muted: #a1a1aa;
+    --border-color: #27272a;      /* حدود خافتة */
+    --shadow-gold: 0 10px 40px rgba(164, 133, 76, 0.15);
 }
 
 * {
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Cairo', 'Segoe UI', sans-serif;
 }
 
 body.login-page {
@@ -21,83 +22,99 @@ body.login-page {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: var(--bg-gradient);
+    background: radial-gradient(circle at center, #1c1c1c 0%, #000000 100%); /* خلفية متدرجة دائرية فخمة */
+    direction: rtl;
 }
 
 .login-wrapper {
     width: 100%;
     max-width: 450px;
-    padding: 20px;
+    padding: 25px;
 }
 
 /* الكارت الرئيسي */
 .login-card {
-    background: var(--card-bg);
-    border-radius: 20px;
+    background: var(--surface-card);
+    border-radius: 24px;
     overflow: hidden;
-    box-shadow: var(--shadow);
-    animation: fadeIn 0.8s ease-in-out;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+    animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* استبدال الصورة بتصميم هندسي احترافي */
+/* الهيدر الذهبي */
 .card-header-img {
-    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-    padding: 40px 20px;
+    background: linear-gradient(135deg, #1c1c1f 0%, #09090b 100%);
+    padding: 50px 20px;
     text-align: center;
     position: relative;
+    border-bottom: 2px solid var(--primary-gold);
 }
 
-/* إخفاء الصورة الأصلية لأننا نريد تصميم بدون صور */
-.card-header-img img {
-    display: none; 
+/* إضافة رمز تجميلي ذهبي بدلاً من الصورة */
+.card-header-img::after {
+    content: "★"; /* أو لوجو المتجر */
+    font-size: 2.5rem;
+    color: var(--primary-gold);
+    display: block;
+    margin-bottom: 10px;
+    text-shadow: 0 0 15px rgba(164, 133, 76, 0.5);
 }
 
 .header-overlay h2 {
-    color: white;
+    color: var(--text-white);
     margin: 0;
     font-size: 1.8rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-weight: 800;
+    letter-spacing: 1px;
 }
 
 /* جسم الكارت */
 .card-body {
-    padding: 30px;
+    padding: 40px 35px;
 }
 
 .card-body h3 {
-    color: var(--text-main);
-    margin-bottom: 10px;
-    font-size: 1.4rem;
+    color: var(--primary-gold);
+    margin-bottom: 8px;
+    font-size: 1.5rem;
     text-align: center;
+    font-weight: 700;
 }
 
 .subtitle {
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 35px;
 }
 
 /* الرسائل والتنبيهات */
 .alert {
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 20px;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 25px;
     font-size: 0.9rem;
     text-align: center;
+    font-weight: 600;
 }
-.alert.error { background: #ffeef0; color: #d63031; border: 1px solid #fab1a0; }
+.alert.error { 
+    background: rgba(239, 68, 68, 0.1); 
+    color: #ef4444; 
+    border: 1px solid rgba(239, 68, 68, 0.2); 
+}
 
 /* المدخلات */
 .input-group {
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .input-group label {
     display: block;
-    margin-bottom: 8px;
-    color: var(--text-main);
+    margin-bottom: 10px;
+    color: var(--text-white);
     font-weight: 600;
+    font-size: 0.9rem;
 }
 
 .input-wrapper {
@@ -108,93 +125,115 @@ body.login-page {
 
 .input-icon {
     position: absolute;
-    right: 15px;
-    color: var(--text-muted);
+    right: 18px;
+    color: var(--primary-gold); /* الأيقونات بالذهبي */
+    font-size: 1.1rem;
 }
 
 .input-wrapper input {
     width: 100%;
-    padding: 12px 45px 12px 15px;
-    border: 2px solid #eee;
-    border-radius: 12px;
+    padding: 14px 50px 14px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
     outline: none;
     transition: all 0.3s;
     font-size: 1rem;
+    background: #09090b;
+    color: white;
 }
 
 .input-wrapper input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(230, 126, 34, 0.1);
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 0 4px rgba(164, 133, 76, 0.1);
+    background: #000000;
 }
 
 .toggle-password {
     position: absolute;
-    left: 15px;
+    left: 18px;
     cursor: pointer;
     color: var(--text-muted);
+    transition: 0.3s;
 }
+
+.toggle-password:hover { color: var(--primary-gold); }
 
 /* خيارات النموذج */
 .form-options {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
-    font-size: 0.85rem;
+    margin-bottom: 30px;
+    font-size: 0.9rem;
 }
 
 .remember-me {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
     cursor: pointer;
+    color: var(--text-muted);
+}
+
+.remember-me input {
+    accent-color: var(--primary-gold);
 }
 
 .forgot-link {
-    color: var(--primary-color);
+    color: var(--primary-gold);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
 }
 
-/* زر الدخول */
+.forgot-link:hover { text-decoration: underline; }
+
+/* زر الدخول الملكي */
 .btn-login {
     width: 100%;
-    padding: 14px;
-    background: linear-gradient(to left, var(--primary-color), var(--secondary-color));
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     color: white;
     font-size: 1.1rem;
-    font-weight: bold;
+    font-weight: 800;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    box-shadow: var(--shadow-gold);
 }
 
 .btn-login:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(164, 133, 76, 0.4);
+    filter: brightness(1.1);
 }
 
-.btn-login .login-icon {
-    transform: rotate(180deg); /* ليتناسب مع الاتجاه العربي */
-}
+.btn-login:active { transform: translateY(0); }
 
 /* التذييل */
 .card-footer {
-    padding: 20px;
+    padding: 25px;
     text-align: center;
-    background: #fcfcfc;
-    border-top: 1px solid #eee;
-    font-size: 0.8rem;
+    background: #1c1c1f;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.85rem;
     color: var(--text-muted);
 }
 
 /* حركات أنيميشن */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(30px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* للمتصفحات التي تدعم الشفافية */
+@supports (backdrop-filter: blur(10px)) {
+    .login-card {
+        background: rgba(18, 18, 20, 0.8);
+        backdrop-filter: blur(20px);
+    }
 }
