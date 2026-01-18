@@ -96,6 +96,8 @@ class Supplier(models.Model):
 
     def __str__(self):
         return self.name
+    
+
 
 class InventoryItem(models.Model):
     name = models.CharField(max_length=200, verbose_name="اسم الصنف")
@@ -122,3 +124,46 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+
+class SupplyLog(models.Model):
+    supplier = models.ForeignKey(
+        Supplier, 
+        on_delete=models.CASCADE, 
+        related_name='supply_history', 
+        verbose_name="المورد"
+    )
+    item = models.ForeignKey(
+        InventoryItem, 
+        on_delete=models.CASCADE, 
+        verbose_name="الصنف المورد"
+    )
+    quantity_added = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        verbose_name="الكمية المضافة"
+    )
+    cost_at_time = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        verbose_name="سعر الوحدة عند الشراء"
+    )
+    total_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        verbose_name="الإجمالي المدفوع"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True, 
+        verbose_name="تاريخ التوريد"
+    )
+
+    def save(self, *args, **kwargs):
+        # حساب الإجمالي تلقائياً إذا لم يتم إدخاله
+        if not self.total_amount:
+            self.total_amount = self.quantity_added * self.cost_at_time
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.item.name} - {self.supplier.name} ({self.created_at.date()})"

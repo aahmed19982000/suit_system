@@ -6,35 +6,12 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/inventory.css' %}">
     <style>
-        /* 1. حل مشكلة اختفاء النصوص في القوائم المنسدلة */
-        .form-select-luxury, 
-        .form-select-luxury option {
-            color: #ffffff !important; 
-            background-color: #1a1a1a !important;
-        }
-
-        /* 2. حل مشكلة طول النافذة وتفعيل التمرير */
-        .luxury-modal-overlay {
-            display: none; 
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 2000;
-            align-items: flex-start !important; 
-            padding: 40px 10px !important;
-            overflow-y: auto !important; 
-        }
-
-        .modal-card.large-card {
-            margin: auto !important;
-            max-height: none !important;
-            overflow: visible !important;
-        }
-
-        body.modal-open {
-            overflow: hidden;
-        }
+        .form-select-luxury, .form-select-luxury option { color: #ffffff !important; background-color: #1a1a1a !important; }
+        .luxury-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; align-items: flex-start; padding: 40px 10px; overflow-y: auto; }
+        .modal-card.large-card { margin: auto; max-height: none; }
+        .hidden-field { display: none; }
+        .search-success { border-color: #27ae60 !important; background: rgba(39, 174, 96, 0.1); }
+        .search-new { border-color: #3498db !important; background: rgba(52, 152, 219, 0.1); }
     </style>
 {% endblock %}
 
@@ -42,10 +19,9 @@
 <div class="inventory-page-wrapper" dir="rtl">
     
     <header class="inventory-main-header">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
         <div class="header-text">
             <h1 class="page-title">إدارة المخزون</h1>
-            <p class="page-subtitle">نظرة عامة على المواد الخام المتوفرة والحالات الفنية للمخزون.</p>
+            <p class="page-subtitle">إدارة الأصناف والموردين والربط المالي التلقائي.</p>
         </div>
         <div class="header-actions">
             <button onclick="openModal('addItemModal')" class="btn-primary-luxury">
@@ -57,52 +33,17 @@
 
     <section class="stats-container">
         <div class="luxury-card stat-item">
-            <div class="stat-info">
-                <span class="label">إجمالي الأصناف</span>
-                <span class="value">{{ total_items_count }}</span>
-            </div>
+            <div class="stat-info"><span class="label">إجمالي الأصناف</span><span class="value">{{ items.count }}</span></div>
             <span class="material-symbols-outlined icon-bg">inventory</span>
         </div>
-
-        <div class="luxury-card stat-item low-stock-border">
-            <div class="stat-info">
-                <span class="label text-red">مخزون منخفض</span>
-                <span class="value text-red">{{ low_stock_count }}</span>
-            </div>
-            <span class="material-symbols-outlined icon-bg red-icon">warning</span>
-        </div>
-
-        <div class="luxury-card stat-item">
-            <div class="stat-info">
-                <span class="label">الفئات</span>
-                <span class="value">{{ categories.count }}</span>
-            </div>
-            <span class="material-symbols-outlined icon-bg blue-icon">category</span>
-        </div>
-
         <div class="luxury-card stat-item total-value-border">
             <div class="stat-info">
-                <span class="label text-emerald">القيمة الإجمالية</span>
+                <span class="label text-emerald">إجمالي القيمة التقديرية</span>
                 <span class="value text-emerald">{{ inventory_value|floatformat:2 }} <small>ج.م</small></span>
             </div>
             <span class="material-symbols-outlined icon-bg emerald-icon">payments</span>
         </div>
     </section>
-
-    <div class="table-tools-bar">
-        <div class="search-input-group">
-            <span class="material-symbols-outlined search-icon">search</span>
-            <input type="text" id="inventorySearch" placeholder="بحث عن صنف بالاسم..." class="form-input-luxury">
-        </div>
-        <div class="filter-group">
-            <select id="categoryFilter" class="form-select-luxury">
-                <option value="all">كل الفئات</option>
-                {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
 
     <div class="inventory-table-container">
         <table class="luxury-data-table" id="inventoryTable">
@@ -113,36 +54,23 @@
                     <th>المورد</th>
                     <th>تكلفة التوريد</th>
                     <th>سعر البيع</th>
-                    <th>الربح</th>
-                    <th>حالة المخزون</th>
+                    <th>الكمية</th>
                     <th class="text-center">الإجراءات</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr data-category="{{ item.category.id }}">
-                    <td class="product-cell">
-                        <div class="item-id-container">
-                            <span class="item-name-text">{{ item.name }}</span>
-                            <span class="item-id-tag">ID: #{{ item.id }}</span>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="specs-container">
-                            <span class="unit-badge">{{ item.unit }}</span>
-                            {% if item.size %}<span class="spec-tag">حجم: {{ item.size.size }}</span>{% endif %}
-                            {% if item.color %}<span class="spec-tag">لون: {{ item.color.color }}</span>{% endif %}
-                        </div>
-                    </td>
+                <tr>
+                    <td><strong>{{ item.name }}</strong></td>
+                    <td><span class="unit-badge">{{ item.unit }}</span></td>
                     <td><span class="table-text-muted">{{ item.Supplier.name|default:"-" }}</span></td>
                     <td><span class="price-text">{{ item.supply_cost }} ج.م</span></td>
                     <td><span class="price-text-gold">{{ item.unit_cost }} ج.م</span></td>
-                    <td><span class="text-emerald">{{ item.profit }} ج.م</span></td>
                     <td>
                         {% if item.quantity <= item.min_limit %}
-                            <div class="status-badge-luxury status-red"> منخفض ({{ item.quantity|floatformat:2 }})</div>
+                            <div class="status-badge-luxury status-red">{{ item.quantity|floatformat:2 }}</div>
                         {% else %}
-                            <div class="status-badge-luxury status-green"> متوفر ({{ item.quantity|floatformat:2 }})</div>
+                            <div class="status-badge-luxury status-green">{{ item.quantity|floatformat:2 }}</div>
                         {% endif %}
                     </td>
                     <td class="text-center">
@@ -157,103 +85,72 @@
     </div>
 </div>
 
-<div id="updateModal" class="luxury-modal-overlay">
-    <div class="modal-card small-card">
-        <h3 id="modal_item_name" class="modal-title">اسم الصنف</h3>
-        <form action="{% url 'update_inventory' %}" method="POST">
-            {% csrf_token %}
-            <input type="hidden" name="item_id" id="modal_item_id">
-            <div class="form-group-centered">
-                <input name="amount" type="number" step="0.01" required class="input-massive-dark" autofocus>
-            </div>
-            <div class="modal-buttons-grid">
-                <button name="action" value="add" type="submit" class="btn-modal-action btn-add-stock">توريد (+)</button>
-                <button name="action" value="subtract" type="submit" class="btn-modal-action btn-remove-stock">صرف (-)</button>
-            </div>
-            <button type="button" onclick="closeModal('updateModal')" class="btn-close-text">إغلاق</button>
-        </form>
-    </div>
-</div>
-
 <div id="addItemModal" class="luxury-modal-overlay">
     <div class="modal-card large-card">
         <div class="modal-header-with-icon">
             <span class="material-symbols-outlined gold-text">add_box</span>
-            <h3>إضافة صنف جديد للمخزن</h3>
+            <h3>إضافة صنف جديد وحساب مبالغ المورد</h3>
         </div>
+        
         <form action="{% url 'add_inventory_item' %}" method="POST" class="luxury-form-grid">
             {% csrf_token %}
+            
             <div class="full-row">
                 <label class="form-label">اسم الصنف</label>
-                <input name="name" type="text" required class="form-input-luxury">
+                <input name="name" type="text" required class="form-input-luxury" placeholder="مثال: قماش صوف إيطالي">
             </div>
+
             <div class="half-row">
-                <label class="form-label">رقم هاتف المورد</label>
-                <input type="text" id="sup_phone_search" name="supplier_phone_input" class="form-input-luxury">
+                <label class="form-label" style="color: #d4af37;">رقم هاتف المورد (للبحث)</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="sup_phone_search" name="supplier_phone_input" class="form-input-luxury" placeholder="أدخل الرقم...">
+                    <button type="button" class="btn-primary-luxury" onclick="searchSupplier()">بحث</button>
+                </div>
             </div>
+
             <div class="half-row">
-                <label class="form-label">المورد</label>
+                <label class="form-label">المورد المختار</label>
                 <select name="Supplier" id="supplier_select" class="form-select-luxury">
-                    <option value="">-- مورد جديد --</option>
+                    <option value="">-- اختر مورد أو ابحث بالهاتف --</option>
                     {% for supplier in suppliers %}
                     <option value="{{ supplier.id }}" data-phone="{{ supplier.phone }}">{{ supplier.name }}</option>
                     {% endfor %}
                 </select>
             </div>
+
+            <div id="new_supplier_fields" class="full-row hidden-field" style="background: rgba(52, 152, 219, 0.1); padding: 15px; border-radius: 10px; border: 1px dashed #3498db;">
+                <label class="form-label">اسم المورد الجديد</label>
+                <input type="text" id="new_supplier_name" name="new_supplier_name" class="form-input-luxury" placeholder="سيتم إنشاء مورد جديد بهذا الاسم">
+            </div>
+
             <div class="half-row">
                 <label class="form-label">الفئة</label>
                 <select name="category" class="form-select-luxury" required>
-                    <option value="">اختر الفئة</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}">{{ cat }}</option>
-                    {% endfor %}
+                    {% for cat in categories %}<option value="{{ cat.id }}">{{ cat }}</option>{% endfor %}
                 </select>
             </div>
             <div class="half-row">
                 <label class="form-label">الوحدة</label>
                 <select name="unit" class="form-select-luxury" required>
-                    <option value="">اختر الوحدة</option>
-                    {% for unit in units %}
-                    <option value="{{ unit.id }}">{{ unit }}</option>
-                    {% endfor %}
+                    {% for unit in units %}<option value="{{ unit.id }}">{{ unit }}</option>{% endfor %}
                 </select>
             </div>
+
             <div class="third-row">
-                <label class="form-label">الحجم</label>
-                <select name="size" class="form-select-luxury">
-                    <option value="">---------</option>
-                    {% for s in sizes %}
-                    <option value="{{ s.id }}">{{ s.size }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="third-row">
-                <label class="form-label">اللون</label>
-                <select name="color" class="form-select-luxury">
-                    <option value="">---------</option>
-                    {% for c in colors %}
-                    <option value="{{ c.id }}">{{ c.color }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="third-row">
-                <label class="form-label">الكمية</label>
+                <label class="form-label">الكمية الافتتاحية</label>
                 <input name="quantity" type="number" step="0.01" required value="0" class="form-input-luxury">
             </div>
             <div class="third-row">
-                <label class="form-label">حد الطلب</label>
-                <input name="min_limit" type="number" step="0.01" required value="5" class="form-input-luxury">
+                <label class="form-label">تكلفة التوريد (للوحدة)</label>
+                <input name="supply_cost" type="number" step="0.01" required value="0" class="form-input-luxury">
             </div>
             <div class="third-row">
-                <label class="form-label">تكلفة التوريد</label>
-                <input name="supply_cost" type="number" step="0.01" value="0" class="form-input-luxury">
+                <label class="form-label">سعر البيع المقترح</label>
+                <input name="unit_cost" type="number" step="0.01" required value="0" class="form-input-luxury">
             </div>
-            <div class="third-row">
-                <label class="form-label">سعر البيع</label>
-                <input name="unit_cost" type="number" step="0.01" required class="form-input-luxury">
-            </div>
+
             <div class="modal-footer-actions full-row">
-                <button type="submit" class="btn-primary-luxury full-width">حفظ البيانات</button>
+                <button type="submit" class="btn-primary-luxury full-width">حفظ وتسجيل الحركة المالية</button>
                 <button type="button" onclick="closeModal('addItemModal')" class="btn-secondary-luxury">إلغاء</button>
             </div>
         </form>
@@ -263,90 +160,47 @@
 
 {% block extra_js %}
 <script>
-    // --- وظائف المودال (الفتح والإغلاق) ---
-    function openModal(id) {
-        const modal = document.getElementById(id);
-        modal.style.display = 'flex';
-        document.body.classList.add('modal-open');
-    }
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    function closeModal(id) {
-        const modal = document.getElementById(id);
-        modal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-    }
-
-    function openUpdateModal(id, name) {
-        document.getElementById('modal_item_id').value = id;
-        document.getElementById('modal_item_name').innerText = name;
-        openModal('updateModal');
-        // تركيز الماوس تلقائياً على حقل الكمية عند الفتح
-        setTimeout(() => {
-            document.querySelector('#updateModal input[name="amount"]').focus();
-        }, 300);
-    }
-
-    // إغلاق المودال عند النقر في المساحة الفارغة خارج الكارت
-    window.onclick = function(event) {
-        if (event.target.classList.contains('luxury-modal-overlay')) {
-            closeModal(event.target.id);
-        }
-    }
-
-    // --- وظيفة البحث عن المورد (مثل نظام الـ POS) ---
-    document.getElementById('sup_phone_search').addEventListener('input', function(e) {
-        const phone = e.target.value.trim();
+    // وظيفة البحث عن المورد بنفس منطق الـ POS
+    function searchSupplier() {
+        const phone = document.getElementById('sup_phone_search').value.trim();
         const select = document.getElementById('supplier_select');
         const newFields = document.getElementById('new_supplier_fields');
-        const newSupNameInput = document.getElementById('new_supplier_name');
+        const phoneInput = document.getElementById('sup_phone_search');
 
-        // يبدأ البحث بمجرد كتابة 10 أرقام أو أكثر
-        if (phone.length >= 10) {
-            // استدعاء الـ View الذي قمنا بإنشائه (check_supplier_by_phone)
-            fetch(`/pos/check-supplier/?phone=${phone}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.found) {
-                        // 1. المورد موجود: يتم اختياره في القائمة وإخفاء حقول الإضافة
-                        select.value = data.id;
-                        newFields.classList.add('hidden');
-                        newSupNameInput.removeAttribute('required');
-                    } else {
-                        // 2. المورد غير موجود: يتم تصفير القائمة وإظهار حقل كتابة الاسم الجديد
-                        select.value = "";
-                        newFields.classList.remove('hidden');
-                        newSupNameInput.setAttribute('required', 'required');
-                    }
-                })
-                .catch(error => console.error('Error fetching supplier:', error));
-        } else {
-            // إخفاء الحقول الإضافية إذا كان الرقم المكتوب غير مكتمل
-            newFields.classList.add('hidden');
-            newSupNameInput.removeAttribute('required');
-        }
-    });
+        if (!phone) return alert('يرجى إدخال رقم الهاتف أولاً');
 
-    // --- وظيفة البحث في الجدول (الفلترة الفورية) ---
-    document.getElementById('inventorySearch').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#inventoryTable tbody tr');
-        
-        rows.forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        fetch(`/pos/check-supplier/?phone=${phone}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.found) {
+                    // مورد موجود
+                    select.value = data.id;
+                    newFields.classList.add('hidden-field');
+                    phoneInput.classList.add('search-success');
+                    phoneInput.classList.remove('search-new');
+                    alert('تم ربط المورد: ' + data.name);
+                } else {
+                    // مورد جديد
+                    select.value = "";
+                    newFields.classList.remove('hidden-field');
+                    phoneInput.classList.add('search-new');
+                    phoneInput.classList.remove('search-success');
+                    document.getElementById('new_supplier_name').focus();
+                    alert('رقم هاتف جديد، يرجى كتابة اسم المورد');
+                }
+            })
+            .catch(err => alert('خطأ في الاتصال بالبيانات'));
+    }
+
+    // البحث السريع في الجدول
+    document.getElementById('inventorySearch')?.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('#inventoryTable tbody tr').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
         });
-    });
-
-    // --- وظيفة فلترة التصنيفات ---
-    document.getElementById('categoryFilter').addEventListener('change', function(e) {
-        const catId = e.target.value;
-        const url = new URL(window.location.href);
-        if (catId === 'all') {
-            url.searchParams.delete('category');
-        } else {
-            url.searchParams.set('category', catId);
-        }
-        window.location.href = url.toString();
     });
 </script>
 {% endblock %}

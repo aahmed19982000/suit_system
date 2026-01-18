@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة الموردين - متجر الفخامة{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/supplies_management.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="supplier-page-container" dir="rtl">
+    
+    <header class="page-header">
+        <div class="header-breadcrumb">
+            <span class="material-symbols-outlined">home</span>
+            <span class="sep">/</span>
+            <span class="current">إدارة الموردين</span>
+        </div>
+        <h1 class="page-main-title">إدارة الموردين</h1>
+    </header>
+
+    <section class="stats-grid">
+        <div class="luxury-stat-card">
+            <div class="stat-content">
+                <span class="stat-label">إجمالي الموردين</span>
+                <span class="stat-value">{{ suppliers.count }}</span>
+            </div>
+            <div class="stat-icon-wrapper gold-bg">
+                <span class="material-symbols-outlined">group</span>
+            </div>
+        </div>
+        </section>
+
+    <div class="table-toolbar">
+        <div class="search-wrapper">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input type="text" id="supplierTableSearch" placeholder="البحث عن مورد، رقم هاتف..." class="luxury-input">
+        </div>
+        <button class="btn-add-supplier" onclick="openModal('addSupplierModal')">
+            <span class="material-symbols-outlined">add</span>
+            إضافة مورد جديد
+        </button>
+    </div>
+
+    <div class="luxury-table-wrapper">
+        <table class="luxury-table" id="suppliersTable">
+            <thead>
+                <tr>
+                    <th>اسم المورد</th>
+                    <th>معلومات الاتصال</th>
+                    <th>الفئة</th>
+                    <th class="text-center">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr>
+                    <td class="supplier-cell">
+                        <div class="avatar {% cycle 'blue' 'emerald' 'gold' %}">
+                            {{ supplier.name|slice:":1"|upper }}
+                        </div>
+                        <div class="info">
+                            <span class="name">{{ supplier.name }}</span>
+                            <span class="sub">{{ supplier.address|default:"-" }}</span>
+                        </div>
+                    </td>
+                    <td class="contact-cell">
+                        <span class="email">{{ supplier.email|default:"-" }}</span>
+                        <span class="phone">{{ supplier.phone }}</span>
+                    </td>
+                    <td><span class="badge gold">{{ supplier.category|default:"عام" }}</span></td>
+                    <td class="actions-cell">
+                        <a href="{% url 'delete_supplier' supplier.id %}" class="btn-icon delete" onclick="return confirm('هل أنت متأكد من حذف المورد؟')">
+                            <span class="material-symbols-outlined">delete</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center">لا يوجد موردين مسجلين بعد.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="addSupplierModal" class="luxury-modal-overlay">
+    <div class="modal-card small-card">
+        <h3 class="modal-title">بيانات المورد الجديد</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">الاسم</label>
+                <input type="text" name="name" class="luxury-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">رقم الهاتف</label>
+                <input type="text" name="phone" class="luxury-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">الفئة</label>
+                <input type="text" name="category" placeholder="مثل: أقمشة صوف" class="luxury-input">
+            </div>
+            <div class="modal-buttons-grid" style="margin-top: 20px;">
+                <button type="submit" class="btn-primary-luxury">حفظ المورد</button>
+                <button type="button" onclick="closeModal('addSupplierModal')" class="btn-secondary-luxury">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openModal(id) {
+        document.getElementById(id).style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // تفعيل وظيفة البحث السريع في الجدول
+    document.getElementById('supplierTableSearch').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#suppliersTable tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    window.onclick = function(event) {
+        if (event.target.classList.contains('luxury-modal-overlay')) {
+            closeModal(event.target.id);
+        }
+    }
+</script>
+{% endblock %}

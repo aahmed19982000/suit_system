@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.db import models
-from .models import Product , Customer , Supplier
+from .models import Product , Customer , Supplier , SupplyLog
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ProductForm
 from django.contrib import messages
@@ -190,24 +190,23 @@ def inventory_management(request):
     return render(request, 'pos/inventory_management.html', context)
 
 @require_POST
-@role_required('manager')
 def add_inventory_item(request):
     try:
-        # 1. التعامل مع المورد أولاً
+        # 1. جلب بيانات المورد
         supplier_id = request.POST.get('Supplier')
-        supplier_phone = request.POST.get('supplier_phone_input')
-        supplier_name = request.POST.get('new_supplier_name')
+        sup_phone = request.POST.get('supplier_phone_input')
+        new_sup_name = request.POST.get('new_supplier_name')
 
-        # إذا لم يتم اختيار مورد من القائمة ولكن تم كتابة بيانات مورد جديد
-        if not supplier_id and supplier_phone and supplier_name:
-            new_sup, created = Supplier.objects.get_or_create(
-                phone=supplier_phone,
-                defaults={'name': supplier_name}
+        # 2. منطق تسجيل المورد الجديد (تم تغيير الحقل هنا إلى mobil)
+        if not supplier_id and sup_phone and new_sup_name:
+            supplier_obj, created = Supplier.objects.get_or_create(
+                mobil=sup_phone, # تم التصحيح هنا من phone إلى mobil
+                defaults={'name': new_sup_name}
             )
-            supplier_id = new_sup.id
+            supplier_id = supplier_obj.id
 
-        # 2. استلام باقي بيانات الصنف
-        InventoryItem.objects.create(
+        # 3. إنشاء الصنف في المخزن
+        item = InventoryItem.objects.create(
             name=request.POST.get('name'),
             category_id=request.POST.get('category'),
             unit_id=request.POST.get('unit'),
@@ -215,23 +214,34 @@ def add_inventory_item(request):
             min_limit=Decimal(request.POST.get('min_limit', 0)),
             unit_cost=Decimal(request.POST.get('unit_cost', 0)),
             supply_cost=Decimal(request.POST.get('supply_cost', 0)),
-            profit=Decimal(request.POST.get('profit', 0)),
             Supplier_id=supplier_id if supplier_id else None,
             size_id=request.POST.get('size') or None,
             color_id=request.POST.get('color') or None,
         )
 
-        messages.success(request, 'تم إضافة الصنف والمورد بنجاح')
+        # 4. تسجيل الحركة المالية في سجل التوريد (SupplyLog)
+        if item.Supplier and item.quantity > 0:
+            from .models import SupplyLog
+            SupplyLog.objects.create(
+                supplier=item.Supplier,
+                item=item,
+                quantity_added=item.quantity,
+                cost_at_time=item.supply_cost,
+                total_amount=item.quantity * item.supply_cost
+            )
+
+        messages.success(request, 'تم إضافة الصنف والمورد وتسجيل المبلغ المالي بنجاح')
         return redirect('inventory_management')
     except Exception as e:
-        messages.error(request, f'خطأ: {str(e)}')
+        messages.error(request, f'حدث خطأ: {str(e)}')
         return redirect('inventory_management')
-
 # AJAX للتحقق من وجود مورد بناءً على رقم الهاتف
 @login_required
 def check_supplier_by_phone(request):
     phone = request.GET.get('phone')
-    supplier = Supplier.objects.filter(phone=phone).first() # تأكد أن اسم الحقل في موديل المورد هو phone
+    # تأكد من استخدام mobil لأن هذا هو اسم الحقل في الموديل الخاص بك
+    supplier = Supplier.objects.filter(mobil=phone).first() 
+    
     if supplier:
         return JsonResponse({
             'found': True, 
@@ -239,7 +249,6 @@ def check_supplier_by_phone(request):
             'name': supplier.name
         })
     return JsonResponse({'found': False})
-
 @require_POST
 def update_inventory_quantity(request):
     item_id = request.POST.get('item_id')
@@ -498,3 +507,33 @@ def process_order_action(request, order_id):
             messages.error(request, "عذراً، صلاحية التعديل للمدير فقط")
 
     return redirect('order_detail', order_id=order.id)
+
+def supplies_management(request):
+    # جلب جميع الموردين من الأحدث للأقدم
+    suppliers = Supplier.objects.all().order_by('-id')
+    
+    # معالجة إضافة مورد جديد عبر POST
+    if request.method == "POST":
+        name = request.POST.get('name')
+        phone = request.POST.get('phone')
+        email = request.POST.get('email')
+        address = request.POST.get('address')
+        category = request.POST.get('category')
+        
+        if name and phone:
+            Supplier.objects.create(
+                name=name,
+                phone=phone,
+                email=email,
+                address=address,
+                category=category
+            )
+            return redirect('supplies_management')
+
+    return render(request, 'pos/supplies_management.html', {'suppliers': suppliers})
+
+# دالة لحذف المورد
+def delete_supplier(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    supplier.delete()
+    return redirect('supplies_management')
