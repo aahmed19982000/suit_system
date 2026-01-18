@@ -1,343 +1,226 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}إدارة المخزون - فطاطري البركة{% endblock %}
+{% block title %}إدارة المخزون - متجر الفخامة{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/inventory.css' %}">
-<style>
-    /* ==========================================================================
-       حل مشكلة النصوص المختفية (التي تظهر كفراغات في الصور)
-       ========================================================================== */
-    
-    /* 1. إظهار نصوص الفئات في أزرار التصفية العلويّة */
-    .filter-tab {
-        text-decoration: none;
-        color: #2c3e50 !important; /* لون نص داكن صريح */
-        display: inline-block;
-        padding: 8px 16px;
-        border-radius: 20px;
-        background-color: #f8f9fa;
-        border: 1px solid #ddd;
-        margin: 0 5px;
-        font-weight: bold;
-    }
-    .filter-tab.active {
-        background-color: #2c3e50 !important;
-        color: white !important;
-    }
-
-    /* 2. إظهار نصوص الجدول (الفئة والصنف) */
-    .inventory-table td {
-        color: #2d3436 !important; /* لون أسود صريح */
-        vertical-align: middle;
-    }
-
-    /* 3. إظهار النصوص داخل النوافذ المنبثقة (Modals) والقوائم */
-    .modal-form label {
-        color: #333 !important;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-    .modal-form input, 
-    .modal-form select {
-        padding: 10px; 
-        border: 1px solid #ccc !important; 
-        border-radius: 8px; 
-        font-size: 1rem;
-        color: #000 !important; /* لون النص المكتوب أسود */
-        background-color: #fff !important; /* خلفية بيضاء صريحة */
-    }
-    .modal-form select option {
-        color: #000 !important;
-        background-color: #fff !important;
-    }
-
-    /* ==========================================================================
-       تنسيقات الهيكل (Layout)
-       ========================================================================== */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-        backdrop-filter: blur(4px);
-    }
-    .modal-content {
-        background: white !important;
-        width: 90%;
-        max-width: 500px;
-        padding: 25px;
-        border-radius: 15px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    }
-    .modal-content.small { max-width: 400px; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 20px; }
-    .modal-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .modal-form .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
-    .modal-form .full { width: 100%; }
-    
-    .btn-save, .btn-add { background: #27ae60; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .btn-cancel { background: #ecf0f1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; color: #333; }
-    .btn-subtract { background: #e67e22; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #95a5a6; }
-</style>
+    <link rel="stylesheet" href="{% static 'css/inventory.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="inventory-container">
-    <header class="inventory-header">
-        <div class="header-actions">
-            <button class="btn-add-item" onclick="openModal('addItemModal')">+ إضافة صنف جديد</button>
-            <button class="btn-export">
-                <span>تصدير تقرير</span>
-                <i class="icon">📥</i>
-            </button>
+<div class="inventory-page-wrapper" dir="rtl">
+    
+    <header class="inventory-main-header">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+        <div class="header-text">
+            <h1 class="page-title">إدارة المخزون</h1>
+            <p class="page-subtitle">نظرة عامة على المواد الخام المتوفرة والحالات الفنية للمخزون.</p>
         </div>
-        <div class="header-title">
-            <h1>إدارة المخزون</h1>
-            <p>تتبع كميات الدقيق، الجبن، اللحوم والمكونات الأخرى</p>
+        <div class="header-actions">
+            <button onclick="openModal('addItemModal')" class="btn-primary-luxury">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span class="btn-text">إضافة صنف جديد</span>
+            </button>
         </div>
     </header>
 
-    <section class="inventory-stats">
-        <div class="stat-card">
-            <div class="stat-icon blue">📦</div>
+    <section class="stats-container">
+        <div class="luxury-card stat-item">
             <div class="stat-info">
                 <span class="label">إجمالي الأصناف</span>
-                <strong class="value">{{ total_items_count }}</strong>
-                <small class="trend up">+{{ categories.count }} فئات</small>
+                <span class="value">{{ total_items_count }}</span>
             </div>
+            <span class="material-symbols-outlined icon-bg">inventory</span>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon red">⚠️</div>
+
+        <div class="luxury-card stat-item low-stock-border">
             <div class="stat-info">
-                <span class="label">أصناف منخفضة</span>
-                <strong class="value">{{ low_stock_count }}</strong>
-                <small class="badge-count">تحتاج طلب شراء</small>
+                <span class="label text-red">مخزون منخفض</span>
+                <span class="value text-red">{{ low_stock_count }}</span>
             </div>
+            <span class="material-symbols-outlined icon-bg red-icon">warning</span>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon green">💰</div>
+
+        <div class="luxury-card stat-item">
             <div class="stat-info">
-                <span class="label">قيمة المخزون</span>
-                <strong class="value">{{ inventory_value|floatformat:0 }} ج.م</strong>
-                <small class="trend up">إجمالي التكلفة</small>
+                <span class="label">الفئات</span>
+                <span class="value">{{ categories.count }}</span>
             </div>
+            <span class="material-symbols-outlined icon-bg blue-icon">category</span>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon orange">🛒</div>
+
+        <div class="luxury-card stat-item total-value-border">
             <div class="stat-info">
-                <span class="label">طلبات الشراء</span>
-                <strong class="value">{{ low_stock_count }}</strong>
-                <small class="trend">تنبيه نشط</small>
+                <span class="label text-emerald">القيمة الإجمالية</span>
+                <span class="value text-emerald">{{ inventory_value|floatformat:2 }} <small>ج.م</small></span>
             </div>
+            <span class="material-symbols-outlined icon-bg emerald-icon">payments</span>
         </div>
     </section>
 
-    <section class="inventory-table-section">
-        <div class="table-filters">
-            <div class="filter-groups">
-                <a href="?" class="filter-tab {% if not selected_category %}active{% endif %}">الكل</a>
-                {% for cat in categories %}
-                <a href="?category={{ cat.id }}" class="filter-tab {% if selected_category == cat.id|stringformat:'i' %}active{% endif %}">
-                    {{ cat.name }}
-                </a>
-                {% endfor %}
-            </div>
-            <div class="search-box">
-                <input type="text" id="inventorySearch" placeholder="بحث باسم الصنف...">
-            </div>
+    <div class="table-tools-bar">
+        <div class="search-input-group">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input type="text" id="inventorySearch" placeholder="بحث عن صنف بالاسم أو الكود..." class="form-input-luxury">
         </div>
+        <div class="filter-group">
+            <select class="form-select-luxury">
+                <option value="">كل الفئات</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
 
-        <table class="inventory-table" id="inventoryTable">
+    <div class="inventory-table-container">
+        <table class="luxury-data-table">
             <thead>
                 <tr>
                     <th>الصنف</th>
                     <th>الفئة</th>
-                    <th>الكمية الحالية</th>
-                    <th>حد الطلب</th>
-                    <th>آخر تحديث</th>
-                    <th>الحالة</th>
-                    <th>إجراءات</th>
+                    <th>الوحدة</th>
+                    <th>سعر الوحدة</th>
+                    <th>حالة المخزون</th>
+                    <th class="text-center">الإجراءات</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr class="inventory-row">
-                    <td><strong>{{ item.name }}</strong></td>
-                    <td>{{ item.category.name }}</td> 
-                    <td><strong>{{ item.quantity }} {{ item.unit.name }}</strong></td>
-                    <td>{{ item.min_limit }} {{ item.unit.name }}</td>
-                    <td>{{ item.updated_at|timesince }}</td>
+                <tr>
+                    <td class="product-cell">
+                        <div class="item-id-container">
+                            <span class="item-name-text">{{ item.name }}</span>
+                            <span class="item-id-tag">ID: #{{ item.id }}</span>
+                        </div>
+                    </td>
+                    <td><span class="table-text-muted">{{ item.category.name|default:"عام" }}</span></td>
+                    <td><span class="unit-badge">{{ item.unit.name }}</span></td>
+                    <td><span class="price-text-gold">{{ item.unit_cost }} ج.م</span></td>
                     <td>
-                        {% if item.is_low %}
-                        <span class="status-badge low">منخفض</span>
+                        {% if item.quantity <= item.min_limit %}
+                            <div class="status-badge-luxury status-red">
+                                <span class="dot red-dot"></span>
+                                مخزون منخفض ({{ item.quantity }})
+                            </div>
                         {% else %}
-                        <span class="status-badge ok">متوفر</span>
+                            <div class="status-badge-luxury status-green">
+                                <span class="dot green-dot"></span>
+                                متوفر ({{ item.quantity }})
+                            </div>
                         {% endif %}
                     </td>
-                    <td>
-                        <button class="btn-update" onclick="openUpdateQty('{{ item.id }}', '{{ item.name }}')">تحديث</button>
+                    <td class="text-center">
+                        <button onclick="openUpdateModal('{{ item.id }}', '{{ item.name }}')" class="btn-action-icon edit-btn" title="تحديث الكمية">
+                            <span class="material-symbols-outlined">edit_square</span>
+                        </button>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" style="text-align: center; color: #666; padding: 30px;">لا توجد أصناف مسجلة.</td></tr>
+                <tr>
+                    <td colspan="6" class="empty-table-msg">لا توجد أصناف مسجلة في المخزن حالياً.</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
-    </section>
+    </div>
 </div>
 
-<div id="addItemModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>إضافة صنف جديد</h3>
-            <button class="close-btn" onclick="closeModal('addItemModal')">&times;</button>
-        </div>
-        <form id="addItemForm" class="modal-form">
+<div id="updateModal" class="luxury-modal-overlay hidden">
+    <div class="modal-card small-card">
+        <h3 id="modal_item_name" class="modal-title">اسم الصنف</h3>
+        <form action="{% url 'update_inventory' %}" method="POST">
             {% csrf_token %}
-            <div class="form-group full">
-                <label>اسم الصنف</label>
-                <input type="text" name="name" placeholder="مثلاً: دقيق فاخر" required>
+            <input type="hidden" name="item_id" id="modal_item_id">
+            <div class="form-group-centered">
+                <label class="input-label-muted">الكمية المراد معالجتها</label>
+                <input name="amount" type="number" step="0.01" required placeholder="0.00" class="input-massive-dark">
             </div>
-            <div class="form-group full">
-                <label>الفئة</label>
-                <select name="category" required>
-                    <option value="" style="color: #999;">اختر الفئة...</option>
+            <div class="modal-buttons-grid">
+                <button name="action" value="add" type="submit" class="btn-modal-action btn-add-stock">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span>توريد (+)</span>
+                </button>
+                <button name="action" value="subtract" type="submit" class="btn-modal-action btn-remove-stock">
+                    <span class="material-symbols-outlined">remove_circle</span>
+                    <span>صرف (-)</span>
+                </button>
+            </div>
+            <button type="button" onclick="closeModal('updateModal')" class="btn-close-text">إلغاء وإغلاق</button>
+        </form>
+    </div>
+</div>
+
+<div id="addItemModal" class="luxury-modal-overlay hidden">
+    <div class="modal-card large-card">
+        <div class="modal-header-with-icon">
+            <span class="material-symbols-outlined gold-text">add_box</span>
+            <h3>إضافة صنف جديد للمخزن</h3>
+        </div>
+        <form action="{% url 'add_inventory_item' %}" method="POST" class="luxury-form-grid">
+            {% csrf_token %}
+            <div class="full-row">
+                <label class="form-label">اسم الصنف</label>
+                <input name="name" type="text" required class="form-input-luxury">
+            </div>
+            <div class="half-row">
+                <label class="form-label">الفئة</label>
+                <select name="category" class="form-select-luxury">
                     {% for cat in categories %}
-                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>الكمية الحالية</label>
-                    <input type="number" step="0.001" name="quantity" required>
-                </div>
-                <div class="form-group">
-                    <label>الوحدة</label>
-                    <select name="unit" required>
-                        {% for unit in units %}
-                            <option value="{{ unit.id }}">{{ unit.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <div class="half-row">
+                <label class="form-label">الوحدة</label>
+                <select name="unit" class="form-select-luxury">
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}">{{ unit.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>حد الطلب</label>
-                    <input type="number" step="0.001" name="min_limit" required>
-                </div>
-                <div class="form-group">
-                    <label>سعر الشراء (للوحدة)</label>
-                    <input type="number" step="0.01" name="unit_cost" required>
-                </div>
+            <div class="half-row">
+                <label class="form-label">الكمية الحالية</label>
+                <input name="quantity" type="number" step="0.01" required class="form-input-luxury">
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeModal('addItemModal')">إلغاء</button>
-                <button type="button" class="btn-save" onclick="submitAddItem()">حفظ الصنف</button>
+            <div class="half-row">
+                <label class="form-label">التكلفة للوحدة (ج.م)</label>
+                <input name="unit_cost" type="number" step="0.01" required class="form-input-luxury">
+            </div>
+            <div class="modal-footer-actions">
+                <button type="submit" class="btn-primary-luxury full-width">حفظ البيانات</button>
+                <button type="button" onclick="closeModal('addItemModal')" class="btn-secondary-luxury">إلغاء</button>
             </div>
         </form>
     </div>
 </div>
+{% endblock %}
 
-<div id="updateQtyModal" class="modal-overlay">
-    <div class="modal-content small">
-        <div class="modal-header">
-            <h3 id="updateItemTitle" style="color: #2c3e50;">تحديث الكمية</h3>
-            <button class="close-btn" onclick="closeModal('updateQtyModal')">&times;</button>
-        </div>
-        <form id="updateQtyForm" class="modal-form">
-            {% csrf_token %}
-            <input type="hidden" id="updateItemId" name="item_id">
-            <div class="form-group full">
-                <label>الكمية المعالجة</label>
-                <input type="number" step="0.001" name="amount" id="updateAmount" placeholder="0.00" required>
-            </div>
-            <div class="modal-footer grid">
-                <button type="button" class="btn-add" onclick="submitUpdate('add')">➕ توريد</button>
-                <button type="button" class="btn-subtract" onclick="submitUpdate('subtract')">➖ استهلاك</button>
-            </div>
-        </form>
-    </div>
-</div>
-
+{% block extra_js %}
 <script>
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { 
+    // وظائف التحكم في النوافذ المنبثقة
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+        document.getElementById(id).style.display = 'flex';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
         document.getElementById(id).style.display = 'none';
-        if(id === 'updateQtyModal') document.getElementById('updateQtyForm').reset();
     }
 
-    function openUpdateQty(id, name) {
-        document.getElementById('updateItemId').value = id;
-        document.getElementById('updateItemTitle').innerText = "تحديث: " + name;
-        openModal('updateQtyModal');
+    function openUpdateModal(id, name) {
+        document.getElementById('modal_item_id').value = id;
+        document.getElementById('modal_item_name').innerText = name;
+        openModal('updateModal');
     }
 
-    function submitUpdate(actionType) {
-        const amountInput = document.getElementById('updateAmount');
-        const itemIdInput = document.getElementById('updateItemId');
-        
-        if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
-            alert("يرجى إدخال كمية صحيحة");
-            return;
+    // إغلاق المودال عند النقر خارج المحتوى
+    window.onclick = function(event) {
+        if (event.target.classList.contains('luxury-modal-overlay')) {
+            event.target.style.display = 'none';
+            event.target.classList.add('hidden');
         }
-
-        const params = new URLSearchParams();
-        params.append('item_id', itemIdInput.value);
-        params.append('amount', amountInput.value);
-        params.append('action', actionType);
-        params.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        fetch("{% url 'update_inventory' %}", {
-            method: 'POST',
-            body: params,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => alert("حدث خطأ أثناء التحديث"));
     }
-
-    function submitAddItem() {
-        const form = document.getElementById('addItemForm');
-        const formData = new FormData(form);
-
-        fetch("{% url 'add_inventory_item' %}", {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert("خطأ: " + data.message);
-            }
-        });
-    }
-
-    document.getElementById('inventorySearch').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
-        document.querySelectorAll('.inventory-row').forEach(row => {
-            const name = row.cells[0].innerText.toLowerCase();
-            row.style.display = name.includes(term) ? '' : 'none';
-        });
-    });
 </script>
 {% endblock %}
