@@ -1,0 +1,141 @@
+/* sidebar.css */
+:root {
+    --primary-orange: #e67e22;
+    --active-bg: #fff5eb;
+    --text-main: #2c3e50;
+    --text-muted: #95a5a6;
+    --sidebar-width: 280px;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #f0f0f0;
+    position: fixed;
+    right: 0; /* للعمل من اليمين لليسار */
+    top: 0;
+    font-family: 'Cairo', sans-serif;
+}
+
+/* Header */
+.sidebar-header {
+    padding: 30px 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid #fcfcfc;
+}
+
+.store-name { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-main); }
+.store-branch { font-size: 0.8rem; margin: 0; color: var(--text-muted); }
+
+.logo-circle {
+    width: 45px;
+    height: 45px;
+    background: var(--active-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* Menu Navigation */
+.sidebar-menu {
+    flex-grow: 1;
+    padding: 20px 10px;
+    overflow-y: auto;
+}
+
+.menu-title {
+    font-size: 0.75rem;
+    color: #bdc3c7;
+    margin: 20px 15px 10px 0;
+    font-weight: 600;
+}
+
+.menu-items { list-style: none; padding: 0; margin: 0; }
+
+.menu-items li a {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12px 15px;
+    text-decoration: none;
+    color: #7f8c8d;
+    border-radius: 12px;
+    margin-bottom: 5px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+/* Active State */
+.menu-items li a.active {
+    background-color: var(--active-bg);
+    color: var(--primary-orange);
+}
+
+.menu-items li a .icon {
+    order: 2; /* الأيقونة على اليسار في RTL */
+    margin-right: 15px;
+    font-size: 1.1rem;
+}
+
+.menu-items li a .text {
+    order: 1;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* Badge */
+.badge {
+    position: absolute;
+    right: 15px;
+    background: var(--primary-orange);
+    color: white;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
+/* User Section */
+.user-section {
+    padding: 20px;
+    border-top: 1px solid #f9f9f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-info-wrapper { display: flex; align-items: center; gap: 12px; }
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: #f1c40f; /* لون برتقالي/أصفر للمستخدم */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+.user-name { font-size: 0.9rem; margin: 0; color: var(--text-main); }
+.user-role { font-size: 0.75rem; margin: 0; color: var(--text-muted); }
+
+.logout-btn {
+    background: none;
+    border: none;
+    color: #bdc3c7;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.logout-btn:hover { color: #e74c3c; }

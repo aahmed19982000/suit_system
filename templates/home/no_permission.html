@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}غير مسموح بالدخول - فطاطري عباد الرحمن{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/error_pages.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="access-denied-container">
+    <div class="error-card">
+        <div class="error-icon">
+            <span class="lock-shield">🛡️</span>
+            <span class="cross-mark">🚫</span>
+        </div>
+        
+        <h1 class="error-title">وصول مقيد!</h1>
+        <p class="error-message">
+            عذراً، يبدو أنك لا تملك الصلاحيات الكافية للوصول إلى هذه الصفحة.
+        </p>
+        
+        <div class="info-box">
+            <p>إذا كنت تعتقد أنك بحاجة للوصول لهذه الصفحة، يرجى التواصل مع <strong>مدير النظام</strong> أو مراجعة <strong>صلاحيات ورديتك</strong>.</p>
+        </div>
+
+        <div class="action-buttons">
+            <a href="{% url 'dashboard' %}" class="btn-primary">العودة للرئيسية</a>
+            <button onclick="window.history.back()" class="btn-secondary">رجوع للخلف</button>
+        </div>
+        
+        <div class="footer-help">
+            <span>رمز الخطأ: 403 Forbidden</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة قائمة الطعام - فطاطري البركة{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/menu_admin.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <header class="admin-header">
+        <div class="header-title">
+            <h1>إدارة قائمة الطعام</h1>
+            <p>تحكم في الأصناف والأسعار وتوافر الوجبات بسهولة</p>
+        </div>
+        <a href="#product-form" class="btn-add-new">+ إضافة صنف جديد</a>
+    </header>
+
+    <section class="quick-stats">
+        <div class="stat-card">
+            <div class="stat-icon blue">🍽️</div>
+            <div class="stat-info">
+                <span>إجمالي الأصناف</span>
+                <strong>{{ products.count }}</strong>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-info">
+                <span>أصناف متاحة</span>
+                <strong>12</strong>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon red">⚠️</div>
+            <div class="stat-info">
+                <span>غير متوفر</span>
+                <strong>3</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="filter-bar">
+        <div class="search-wrapper">
+            <i class="search-icon">🔍</i>
+            <input type="text" placeholder="بحث عن صنف بالاسم...">
+        </div>
+    </section>
+
+    <div class="menu-grid">
+        {% for product in products %}
+        <div class="menu-item-card no-image {% if not product.available %}disabled{% endif %}">
+            <div class="card-body">
+                <div class="category-info">
+                    <span class="category-label">{{ product.Category }}</span>
+                </div>
+                
+                <div class="item-header">
+                    <h3 class="item-name">{{ product.name }}</h3>
+                    <div class="item-price-tag">{{ product.price }} ج.م</div>
+                </div>
+                
+                <p class="item-desc">{{ product.description|default:"لا يوجد وصف لهذا الصنف" }}</p>
+
+                <div class="item-controls">
+                    <div class="availability-toggle">
+                        <label class="switch">
+                            <input type="checkbox" {% if product.available %}checked{% endif %} disabled>
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="status-text">{% if product.available %}متاح{% else %}غير متاح{% endif %}</span>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <a href="{% url 'menu_management' product.id %}" class="btn-icon edit" title="تعديل">✏️</a>
+                        <form method="post" action="{% url 'menu_management' product.id %}" style="display:inline;" onsubmit="return confirm('حذف هذا الصنف؟');">
+                            {% csrf_token %}
+                            <input type="hidden" name="delete" value="1">
+                            <button type="submit" class="btn-icon delete" title="حذف">🗑️</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">لا يوجد أصناف حالياً</div>
+        {% endfor %}
+    </div>
+
+    <div id="product-form" class="product-form-container">
+        <div class="form-card">
+            <h2>{% if editing_product %}تعديل: {{ editing_product.name }}{% else %}إضافة صنف جديد{% endif %}</h2>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-fields">
+                    {{ form.as_p }}
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">حفظ الصنف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}لوحة التحكم - ملخص الوردية{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .dashboard-wrapper { direction: rtl; font-family: 'Cairo', sans-serif; }
+    .stat-info strong, .item-name-row span, .total strong { color: #2c3e50 !important; }
+    .trend-up { color: #2ecc71 !important; font-weight: bold; }
+    .trend-down { color: #e74c3c !important; font-weight: bold; }
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: #f0f2f5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <header class="main-header">
+        <div class="header-right">
+            <a href="#" class="btn-add-order" style="text-decoration: none;">+ طلب جديد</a>
+            <div class="notification-icon">
+                <span class="dot"></span>
+                <i class="bell-icon">🔔</i>
+            </div>
+        </div>
+        <div class="header-left">
+            <h2>ملخص الوردية</h2>
+            <p>{{ today_date|date:"l، d F Y" }}</p>
+        </div>
+    </header>
+
+    <section class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon blue-bg">S</div>
+            <div class="stat-info">
+                <span>المبيعات اليومية</span>
+                <strong>{{ total_sales|default:"0" }} ج.م</strong>
+                <small class="{% if growth_rate >= 0 %}trend-up{% else %}trend-down{% endif %}">
+                    {% if growth_rate >= 0 %}↑{% else %}↓{% endif %} {{ abs_growth_rate }}% عن الأمس
+                </small>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange-bg">📋</div>
+            <div class="stat-info">
+                <span>الطلبات الكلية</span>
+                <strong>{{ total_orders_count }} طلب</strong>
+                <small>منذ بداية الوردية</small>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon yellow-bg">🏠</div>
+            <div class="stat-info">
+                <span>قيد التحضير</span>
+                <strong>{{ preparing_orders_count }} طلبات</strong>
+                <small class="warning-text">تحتاج انتباه</small>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple-bg">📊</div>
+            <div class="stat-info">
+                <span>متوسط الطلب</span>
+                <strong>{{ average_order_value|floatformat:0 }} ج.م</strong>
+                <small>قيمة الفاتورة</small>
+            </div>
+        </div>
+    </section>
+
+    <div class="main-grid">
+        <aside class="best-sellers-section">
+            <div class="section-header">
+                <h3>الأصناف الأكثر مبيعاً</h3>
+                {% if is_manager %}
+                <a href="#">تقارير مفصلة</a>
+                {% endif %}
+            </div>
+            
+            {% for item in best_sellers %}
+            <div class="seller-item">
+                <div class="item-icon pizza">🍴</div>
+                <div class="item-details">
+                    <div class="item-name-row">
+                        <span>{{ item.product__name }}</span>
+                        <span class="count">{{ item.total_qty }} طلب</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 70%; background: #3498db;"></div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="text-align: center; color: #95a5a6; padding-top: 20px;">لا توجد مبيعات مسجلة اليوم.</p>
+            {% endfor %}
+
+            <div class="daily-goal">
+                <div class="goal-info">
+                    <span>تحقيق الهدف اليومي</span>
+                    <strong>82%</strong>
+                </div>
+                <div class="progress-bar-large"><div class="progress" style="width: 82%;"></div></div>
+            </div>
+        </aside>
+
+        <main class="active-orders-section">
+            <div class="section-header">
+                <a href="#" class="view-all">عرض الكل</a>
+                <h3>الطلبات النشطة ({{ active_orders.count }})</h3>
+            </div>
+
+            <div class="orders-grid">
+                {% for order in active_orders %}
+                <div class="order-card">
+                    <div class="order-header">
+                        <span class="table-tag">طلب #{{ order.id }}</span>
+                        <span class="order-id">{{ order.created_at|date:"H:i" }}</span>
+                    </div>
+                    
+                    <div class="order-status">
+                         <span class="status-badge">{{ order.status }}</span>
+                    </div>
+
+                    <div class="order-items">
+                        {% for item in order.items.all %}
+                        <div class="item">
+                            <span>{{ item.quantity }}x {{ item.product.name }}</span>
+                            <span>{{ item.price }} ج.م</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="total"><span>الإجمالي</span> <strong>{{ order.total_price }} ج.م</strong></div>
+                        <div class="actions">
+                            <button class="btn-edit">تعديل</button>
+                            <button class="btn-ready">إتمام</button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; width: 100%; padding: 50px; color: #95a5a6;">
+                    <p>لا توجد طلبات نشطة حالياً</p>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

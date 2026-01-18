@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}سجل الطلبات - فطاطري البركة{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/orders.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="orders-container">
+    <header class="orders-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 style="font-weight: 800; color: var(--text-dark);">سجل العمليات</h1>
+            <button class="action-btn-view" onclick="window.print()" style="padding: 10px 20px;">🖨️ طباعة التقرير</button>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">📦</div>
+                <div class="stat-info">
+                    <p style="color: var(--text-gray); font-size: 0.85rem;">عدد الطلبات المفلترة</p>
+                    <h3 id="orderCountDisplay">{{ orders.count }}</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">💰</div>
+                <div class="stat-info">
+                    <p style="color: var(--text-gray); font-size: 0.85rem;">إجمالي القيمة</p>
+                    <h3 id="filteredSalesDisplay">{{ total_sales|default:"0.00" }} <small>ج.م</small></h3>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="filters-bar">
+        <div class="filter-group" style="flex: 2;">
+            <label>البحث السريع (رقم، موظف، صنف)</label>
+            <div class="search-box">
+                <input type="text" id="proSearchInput" placeholder="اكتب للبحث...">
+            </div>
+        </div>
+        
+        <div class="filter-group" style="flex: 1;">
+            <label>طريقة الدفع</label>
+            <select id="paymentFilter" class="custom-select">
+                <option value="all">الكل</option>
+                <option value="cash">نقداً (Cash)</option>
+                <option value="visa">فيزا (Visa)</option>
+            </select>
+        </div>
+
+        {% if request.user.role == 'manager' %}
+        <div class="filter-group" style="flex: 1;">
+            <label>الموظف</label>
+            <select id="staffFilter" class="custom-select">
+                <option value="all">جميع الموظفين</option>
+                {% for staff in staff_members %}
+                <option value="{{ staff.get_full_name|default:staff.username }}">{{ staff.get_full_name|default:staff.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </section>
+
+    <div class="table-wrapper">
+        <table class="orders-table" id="ordersTable">
+            <thead>
+                <tr>
+                    <th>المعرف</th>
+                    <th>التوقيت</th>
+                    <th>الموظف</th>
+                    <th>الوسيلة</th>
+                    <th>الملخص</th>
+                    <th>القيمة</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody id="ordersBody">
+                {% for order in orders %}
+                <tr class="order-row fade-in" 
+                    data-payment="{{ order.payment_method }}" 
+                    data-staff="{{ order.user.get_full_name|default:order.user.username }}">
+                    <td class="order-id">#{{ order.id }}</td>
+                    <td>
+                        <div style="font-weight: 600;">{{ order.created_at|date:"d/m/Y" }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-gray);">{{ order.created_at|date:"h:i A" }}</div>
+                    </td>
+                    <td>
+                        <div class="staff-profile">
+                            <div class="avatar-circle">{{ order.user.get_full_name|default:order.user.username|slice:":1" }}</div>
+                            <span>{{ order.user.get_full_name|default:order.user.username }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="payment-badge {{ order.payment_method }}">
+                            {{ order.get_payment_method_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="font-size: 0.85rem; color: var(--text-gray); max-width: 200px;">
+                            {% for item in order.items.all %}
+                                {{ item.product.name }}{% if not forloop.last %}، {% endif %}
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td style="font-weight: 800;"><span class="price-val">{{ order.total_price }}</span> ج.م</td>
+                    <td>
+                        <a href="{% url 'order_detail' order.id %}" class="action-btn-view" style="text-decoration: none;">👁️</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align:center; padding: 2rem;">لا توجد طلبات مسجلة</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('proSearchInput');
+    const paymentFilter = document.getElementById('paymentFilter');
+    const staffFilter = document.getElementById('staffFilter');
+    const rows = document.querySelectorAll('.order-row');
+    const filteredSalesDisplay = document.getElementById('filteredSalesDisplay');
+    const orderCountDisplay = document.getElementById('orderCountDisplay');
+
+    function filterData() {
+        const query = searchInput.value.toLowerCase();
+        const payment = paymentFilter.value;
+        const staffValue = staffFilter ? staffFilter.value.toLowerCase() : 'all';
+        
+        let total = 0;
+        let count = 0;
+
+        rows.forEach(row => {
+            // جلب النص من كل الخلايا للبحث الشامل
+            const rowText = row.innerText.toLowerCase();
+            const rowPayment = row.getAttribute('data-payment');
+            const rowStaff = row.getAttribute('data-staff').toLowerCase();
+            const price = parseFloat(row.querySelector('.price-val').innerText);
+
+            const matchesSearch = rowText.includes(query);
+            const matchesPayment = (payment === 'all' || rowPayment === payment);
+            const matchesStaff = (staffValue === 'all' || rowStaff === staffValue);
+
+            if (matchesSearch && matchesPayment && matchesStaff) {
+                row.style.display = '';
+                total += price;
+                count++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        filteredSalesDisplay.innerHTML = `${total.toFixed(2)} <small>ج.م</small>`;
+        orderCountDisplay.innerText = count;
+    }
+
+    searchInput.addEventListener('input', filterData);
+    paymentFilter.addEventListener('change', filterData);
+    if (staffFilter) staffFilter.addEventListener('change', filterData);
+});
+</script>
+{% endblock %}

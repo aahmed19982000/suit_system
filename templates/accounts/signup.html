@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تسجيل حساب جديد{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/signup.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="signup-wrapper">
+    <div class="signup-container">
+      <div class="signup-header">
+        <h2>إنشاء حساب جديد</h2>
+        <p>انضم إلينا وابدأ رحلتك معنا</p>
+      </div>
+
+      <!-- عرض الرسائل -->
+      {% if messages %}
+        <div class="messages-container">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="signup-form">
+        {% csrf_token %}
+        
+        <div class="form-row">
+          <div class="form-group">
+            <input type="text" name="first_name" placeholder="الاسم الأول" required>
+          </div>
+          <div class="form-group">
+            <input type="text" name="last_name" placeholder="الاسم الثاني" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <input type="text" name="username" placeholder="اسم المستخدم" required>
+        </div>
+
+        <div class="form-group">
+          <input type="email" name="email" placeholder="البريد الإلكتروني" required>
+        </div>
+
+        <div class="form-group">
+          <input type="text" name="mobile" placeholder="رقم الموبايل" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <input type="password" name="password" placeholder="كلمة المرور" required>
+          </div>
+          <div class="form-group">
+            <input type="password" name="confirm" placeholder="تأكيد كلمة المرور" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="job_title">الوظيفة</label>
+            <select name="job_title" id="job_title" required>
+              <option value="" disabled selected>اختر الوظيفة</option>
+              <option value="مدير">مدير</option>
+              <option value="كاشير">كاشير</option>
+              <option value="طيار">طيار</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="role">نوع المستخدم</label>
+            <select name="role" id="role" required>
+              <option value="" disabled selected>اختر النوع</option>
+              <option value="manager">مدير</option>
+              <option value="employee">موظف</option>
+              <option value="designer">مصمم</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">إنشاء الحساب</button>
+      </form>
+
+      <div class="login-link">
+        <p>هل لديك حساب بالفعل؟ <a href="{% url 'login' %}">تسجيل الدخول</a></p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

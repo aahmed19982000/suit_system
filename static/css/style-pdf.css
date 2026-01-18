@@ -1,0 +1,966 @@
+/* الأساسيات - مطابق للتصميم الأصلي في PDF */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans Arabic', 'Cairo', sans-serif;
+    background-color: #ffffff;
+    color: #333333;
+    direction: rtl;
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* تصميم الصفحات كمستند PDF */
+.pdf-page {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 40px;
+}
+
+.page-content {
+    width: 100%;
+    max-width: 1200px;
+    height: 100%;
+    position: relative;
+}
+
+/* الصفحة 1 - العنوان الرئيسي */
+.page-1 {
+    background: linear-gradient(135deg, #0a2463 0%, #1e3c8c 100%);
+    color: white;
+    text-align: center;
+}
+
+.title-section {
+    text-align: center;
+    margin-top: 10%;
+}
+
+.main-title {
+    font-size: 4.5rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    line-height: 1.1;
+    margin-bottom: 10px;
+    color: #ffffff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sub-title {
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: #4fc3f7;
+    margin-bottom: 5px;
+}
+
+.sub-sub-title {
+    font-size: 2.8rem;
+    font-weight: 600;
+    color: #4fc3f7;
+    margin-bottom: 40px;
+}
+
+.description {
+    font-size: 1.8rem;
+    font-weight: 400;
+    line-height: 1.6;
+    color: #e3f2fd;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* الصفحة 2 - من نحن */
+.page-2 {
+    background-color: #ffffff;
+    padding: 60px 80px;
+}
+
+.section-title-right {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #0a2463;
+    text-align: right;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 4px solid #4fc3f7;
+    width: 100%;
+}
+
+.content-text {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: #333333;
+    text-align: justify;
+    margin-bottom: 40px;
+}
+
+.content-text p {
+    margin-bottom: 20px;
+}
+
+.highlight-blue {
+    color: #0a2463;
+    font-weight: 800;
+    background-color: #e3f2fd;
+    padding: 0 5px;
+}
+
+.highlight-text {
+    color: #0a2463;
+    font-weight: 700;
+}
+
+.bold-text {
+    font-weight: 700;
+    color: #0a2463;
+}
+
+.first-line {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.timeline-box {
+    background-color: #0a2463;
+    color: white;
+    padding: 20px 30px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-top: 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.timeline-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.timeline-icon {
+    font-size: 1.8rem;
+    color: #4fc3f7;
+}
+
+.timeline-text {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+/* الصفحة 3 - لماذا تشراكون مع Brokers Times */
+.page-3 {
+    background-color: #f8f9fa;
+    padding: 60px 80px;
+}
+
+.section-title-left {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #0a2463;
+    text-align: left;
+    margin-bottom: 20px;
+    direction: ltr;
+}
+
+.intro-text {
+    font-size: 1.4rem;
+    color: #333333;
+    margin-bottom: 60px;
+    text-align: left;
+    direction: ltr;
+    font-weight: 500;
+    max-width: 900px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    margin-bottom: 60px;
+}
+
+.feature-item {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    margin-bottom: 20px;
+}
+
+.icon-circle {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #0a2463 0%, #4fc3f7 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.icon-circle i {
+    font-size: 2.2rem;
+    color: white;
+}
+
+.feature-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0a2463;
+    margin-bottom: 15px;
+    line-height: 1.3;
+}
+
+.feature-description {
+    font-size: 1rem;
+    color: #555555;
+    line-height: 1.6;
+}
+
+.partners-section {
+    background-color: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.partners-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #0a2463;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.partners-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.partner-item {
+    background-color: #f0f7ff;
+    padding: 15px 20px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.partner-item:hover {
+    background-color: #0a2463;
+    color: white;
+}
+
+.partner-number {
+    font-weight: 700;
+    color: #4fc3f7;
+    margin-left: 10px;
+    font-size: 1.1rem;
+}
+
+.partner-item:hover .partner-number {
+    color: white;
+}
+
+.partner-name {
+    font-weight: 600;
+}
+
+/* الصفحة 4 - قوة المرور غير المسبوقة */
+.page-4 {
+    background-color: #ffffff;
+    padding: 60px 80px;
+}
+
+.traffic-description {
+    font-size: 1.4rem;
+    color: #333333;
+    margin-bottom: 40px;
+    text-align: left;
+    direction: ltr;
+    font-weight: 500;
+}
+
+.main-stat {
+    text-align: center;
+    margin-bottom: 50px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.stat-number {
+    font-size: 5rem;
+    font-weight: 900;
+    color: #0a2463;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #333333;
+    margin: 10px 0;
+}
+
+.stat-subtext {
+    font-size: 1.2rem;
+    color: #666666;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+}
+
+.stat-box {
+    background-color: #f8f9fa;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.stat-box-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #0a2463;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-highlight {
+    color: #4fc3f7;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.stat-details {
+    background-color: white;
+    padding: 15px;
+    border-radius: 6px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.stat-col {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-label-small {
+    font-size: 0.9rem;
+    color: #666666;
+    margin-bottom: 5px;
+}
+
+.stat-number-small {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #0a2463;
+    margin-bottom: 5px;
+}
+
+.stat-description {
+    font-size: 0.9rem;
+    color: #888888;
+}
+
+.stat-organic {
+    font-size: 1.2rem;
+    color: #0a2463;
+    font-weight: 600;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.stat-members {
+    text-align: center;
+}
+
+.members-number {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #0a2463;
+    line-height: 1;
+}
+
+.members-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333333;
+    margin: 10px 0;
+}
+
+.members-visitors {
+    font-size: 1rem;
+    color: #666666;
+}
+
+.google-box {
+    grid-column: span 2;
+    text-align: center;
+}
+
+.google-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.google-content i {
+    font-size: 3rem;
+    color: #4285f4;
+}
+
+.google-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333333;
+}
+
+/* الصفحة 5 - تفاصيل حملة CPA */
+.page-5 {
+    background-color: #f0f7ff;
+    padding: 60px 80px;
+}
+
+.cpa-intro {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #0a2463;
+    line-height: 1.4;
+    margin-bottom: 40px;
+    text-align: left;
+    direction: ltr;
+}
+
+.cpa-details {
+    background-color: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    margin-bottom: 40px;
+}
+
+.cpa-section-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0a2463;
+    margin-bottom: 25px;
+    text-align: left;
+    direction: ltr;
+}
+
+.cpa-placement {
+    font-size: 1.3rem;
+    color: #333333;
+    line-height: 1.6;
+    margin-bottom: 25px;
+    text-align: left;
+    direction: ltr;
+}
+
+.seo-term {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0a2463;
+    display: inline-block;
+    margin-top: 10px;
+    background-color: #f0f7ff;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.cpa-strategy {
+    font-size: 1.2rem;
+    color: #555555;
+    margin-bottom: 25px;
+    text-align: left;
+    direction: ltr;
+    font-style: italic;
+}
+
+.cpa-content {
+    font-size: 1.2rem;
+    color: #333333;
+    line-height: 1.6;
+    text-align: left;
+    direction: ltr;
+}
+
+.cpa-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+    margin-top: 40px;
+    position: relative;
+}
+
+.cpa-item {
+    text-align: center;
+    background-color: white;
+    padding: 30px 20px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    width: 180px;
+}
+
+.cpa-number {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #0a2463;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.cpa-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333333;
+    line-height: 1.3;
+}
+
+.cpa-badges {
+    position: absolute;
+    bottom: -20px;
+    left: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cpa-badge {
+    background-color: #0a2463;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    transform: rotate(-10deg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.cpa-badge:nth-child(2) {
+    transform: rotate(5deg);
+    background-color: #4fc3f7;
+    margin-right: 15px;
+}
+
+/* الصفحة 6 - استراتيجية التوصية الاستباقية */
+.page-6 {
+    background-color: #ffffff;
+    padding: 60px 80px;
+}
+
+.strategy-title {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #0a2463;
+    text-align: left;
+    direction: ltr;
+    margin-bottom: 40px;
+}
+
+.strategy-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 60px;
+}
+
+.strategy-text {
+    font-size: 1.8rem;
+    color: #333333;
+    line-height: 1.6;
+    flex: 1;
+    text-align: left;
+    direction: ltr;
+}
+
+.competitor-visual {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.competitor-label {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0a2463;
+    text-align: center;
+    line-height: 1.3;
+    margin-bottom: 20px;
+}
+
+.arrow-indicator {
+    font-size: 4rem;
+    color: #4fc3f7;
+    font-weight: 900;
+}
+
+/* الصفحة 7 - استهداف جغرافي */
+.page-7 {
+    background-color: #f8f9fa;
+    padding: 60px 80px;
+}
+
+.geo-description {
+    font-size: 1.4rem;
+    color: #333333;
+    margin-bottom: 40px;
+    text-align: left;
+    direction: ltr;
+    font-weight: 500;
+}
+
+.geo-keywords {
+    background-color: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 50px;
+    border-right: 5px solid #0a2463;
+}
+
+.keyword-arabic {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0a2463;
+    margin-bottom: 10px;
+    text-align: right;
+}
+
+.geo-content {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+}
+
+.geo-section {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.geo-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0a2463;
+    margin-bottom: 15px;
+    text-align: left;
+    direction: ltr;
+}
+
+.geo-text {
+    font-size: 1.1rem;
+    color: #555555;
+    line-height: 1.6;
+}
+
+/* الصفحة 8 - ما الذي ستحصل عليه */
+.page-8 {
+    background-color: #ffffff;
+    padding: 60px 80px;
+}
+
+.gain-intro {
+    font-size: 1.4rem;
+    color: #333333;
+    margin-bottom: 60px;
+    text-align: left;
+    direction: ltr;
+    font-weight: 500;
+    max-width: 900px;
+}
+
+.benefits-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+}
+
+.benefit-item {
+    background-color: #f8f9fa;
+    padding: 40px 30px;
+    border-radius: 10px;
+    text-align: center;
+    border-top: 5px solid #0a2463;
+    transition: transform 0.3s ease;
+}
+
+.benefit-item:hover {
+    transform: translateY(-5px);
+}
+
+.benefit-icon {
+    font-size: 3rem;
+    color: #0a2463;
+    margin-bottom: 25px;
+}
+
+.benefit-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0a2463;
+    margin-bottom: 15px;
+}
+
+.benefit-description {
+    font-size: 1.1rem;
+    color: #555555;
+    line-height: 1.6;
+}
+
+/* الصفحة 9 - الخطوات التالية */
+.page-9 {
+    background-color: #f0f7ff;
+    padding: 60px 80px;
+}
+
+.next-steps-intro {
+    font-size: 1.6rem;
+    color: #333333;
+    margin-bottom: 60px;
+    text-align: left;
+    direction: ltr;
+    font-weight: 500;
+    max-width: 900px;
+}
+
+.action-section {
+    background-color: white;
+    padding: 50px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.action-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0a2463;
+    margin-bottom: 20px;
+    text-align: left;
+    direction: ltr;
+}
+
+.action-description {
+    font-size: 1.4rem;
+    color: #555555;
+    margin-bottom: 40px;
+    text-align: left;
+    direction: ltr;
+    line-height: 1.6;
+    max-width: 800px;
+}
+
+.contact-button {
+    text-align: left;
+    direction: ltr;
+}
+
+.contact-link {
+    display: inline-block;
+    background: linear-gradient(135deg, #0a2463 0%, #4fc3f7 100%);
+    color: white;
+    padding: 18px 50px;
+    border-radius: 8px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(10, 36, 99, 0.3);
+}
+
+.contact-link:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(10, 36, 99, 0.4);
+}
+
+/* الصفحة 10 - شكر */
+.page-10 {
+    background: linear-gradient(135deg, #0a2463 0%, #1e3c8c 100%);
+    color: white;
+    padding: 60px 80px;
+    text-align: center;
+}
+
+.thank-you-section {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.thank-you-title {
+    font-size: 4.5rem;
+    font-weight: 900;
+    margin-bottom: 30px;
+    color: #ffffff;
+}
+
+.thank-you-text {
+    font-size: 1.8rem;
+    color: #e3f2fd;
+    margin-bottom: 60px;
+    line-height: 1.6;
+}
+
+.final-brand {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.4;
+}
+
+.brand-tagline {
+    font-size: 1.5rem;
+    color: #4fc3f7;
+    font-weight: 600;
+}
+
+/* أزرار التنقل */
+.navigation {
+    position: fixed;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    z-index: 1000;
+}
+
+.nav-btn {
+    background-color: #0a2463;
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.nav-btn:hover {
+    background-color: #4fc3f7;
+    transform: scale(1.1);
+}
+
+.page-indicator {
+    background-color: white;
+    color: #0a2463;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* تحسينات للعرض على الأجهزة المختلفة */
+@media (max-width: 1200px) {
+    .pdf-page {
+        padding: 40px;
+    }
+    
+    .main-title {
+        font-size: 3.5rem;
+    }
+    
+    .section-title-right, .section-title-left, .strategy-title {
+        font-size: 2.8rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .features-grid, .benefits-container, .geo-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .partners-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .google-box {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .pdf-page {
+        padding: 30px 20px;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    .main-title {
+        font-size: 2.8rem;
+    }
+    
+    .section-title-right, .section-title-left, .strategy-title {
+        font-size: 2.2rem;
+    }
+    
+    .features-grid, .benefits-container, .geo-content, .partners-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .strategy-content {
+        flex-direction: column;
+        gap: 30px;
+    }
+    
+    .cpa-visual {
+        flex-direction: column;
+        gap: 30px;
+    }
+    
+    .cpa-badges {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        flex-direction: row;
+        justify-content: center;
+        margin-top: 20px;
+    }
+}

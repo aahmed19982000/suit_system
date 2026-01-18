@@ -1,0 +1,111 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}فطاطري البركة{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
+    {% block extra_css %}{% endblock %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding-right: 280px;
+            min-height: 100vh;
+        }
+        
+        @media (max-width: 992px) {
+            body {
+                padding-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- الشريط الجانبي -->
+    {% include 'includes/sidebar.html' %}
+    
+    <!-- حاوية رسائل النظام -->
+    {% if messages %}
+    <div class="system-messages" role="status" aria-live="polite" aria-atomic="true">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">
+            <div class="message-text">{{ message }}</div>
+            <button type="button" class="close" aria-label="إغلاق" onclick="this.parentElement.style.display='none'">×</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- المحتوى الرئيسي -->
+    <main>
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- طبقة التعتيم للشاشات الصغيرة -->
+    <div class="overlay" id="overlay"></div>
+
+    <script src="{% static 'js/script.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            // تبديل القائمة
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                    document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : 'auto';
+                });
+            }
+            
+            // إغلاق القائمة بالنقر على التعتيم
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                });
+            }
+            
+            // إغلاق القائمة بالنقر على رابط
+            document.querySelectorAll('.menu-items a').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 992) {
+                        sidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                        document.body.style.overflow = 'auto';
+                    }
+                });
+            });
+            
+            // سلوك الرسائل
+            const msgs = document.querySelectorAll('.system-messages .message');
+            msgs.forEach((el) => {
+                setTimeout(() => {
+                    el.style.transition = 'opacity .4s, transform .4s';
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(-6px)';
+                    setTimeout(()=> el.remove(), 450);
+                }, 6000);
+            });
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}📸 مهام تحتاج صور{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tasks.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="task-container">
+  <h1>📸 قائمة المهام التي تحتاج صور</h1>
+
+  <!-- نموذج الفلترة -->
+  <form method="get" class="task-filter-form">
+    <label>
+      بحث:
+      <input type="text" name="q" placeholder="ابحث عن عنوان أو كاتب..." value="{{ search_query|default:'' }}">
+    </label>
+
+    <label>
+      الكاتب:
+      <select name="writer">
+        <option value="">-- الكل --</option>
+        {% for id, full_name in writers %}
+          <option value="{{ id }}" {% if id|stringformat:"s" == selected_writer|stringformat:"s" %}selected{% endif %}>
+          {{ full_name }} </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      الحالة:
+      <select name="image_status">
+        <option value="">-- الكل --</option>
+        {% for id, name in image_status %}
+          <option value="{{ id }}" {% if id|stringformat:"s" == selected_status %}selected{% endif %}>{{ name }}</option>
+         {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      موقع النشر:
+      <select name="site">
+        <option value="">-- الكل --</option>
+        {% for id, name in sites %}
+          <option value="{{ id }}" {% if id|stringformat:"s" == selected_site %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button type="submit">🔍 تصفية</button>
+    <a href="{% url 'image_form' %}" class="reset-filter">🔄 إعادة تعيين</a>
+  </form>
+
+  <!-- جدول المهام -->
+  {% if tasks %}
+    <table class="task-table">
+      <thead>
+        <tr>
+          <th>✍️ الكاتب</th>
+          <th>📅 بريد الكاتب</th>
+          <th>📢 موقع النشر</th>
+          <th>🖼️ الصورة المطلوبة</th>
+          <th>📌 حالة الصورة</th>
+          <th>📝 تفاصيل الصورة</th>
+          <th>⚙️ المزيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+          <tr>
+            <td>{{ task.writer.get_full_name|default:task.writer.username }}</td>
+            <td>{{ task.writer.email|default:task.writer.username }}</td>
+            <td>{{ task.publish_site }}</td>
+            <td>{{ task.image|default:"-" }}</td>
+            <td>
+              <form method="post" action="{% url 'update_image_status' task.id %}">
+                {% csrf_token %}
+                <select name="image_status" onchange="this.form.submit()" class="status-select">
+                   {% for value, label in image_status %}
+                      <option value="{{ value }}" {% if task.image_status == value %}selected{% endif %}>{{ label }}</option>
+                   {% endfor %}
+                </select>
+             </form>
+           </td>
+
+            <td>{{ task.image_details|default:"-" }}</td>
+            <td>
+              <a href="{% url 'task_details' task.id %}" target="_blank" class="view-btn">👁️ عرض</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>✅ لا توجد مهام تحتاج صور حالياً.</p>
+  {% endif %}
+</div>
+
+<!-- الباجيناشن -->
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page=1
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">الأولى</a>
+
+    <a href="?page={{ page_obj.previous_page_number }}
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">السابق</a>
+  {% endif %}
+
+  <span>صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}</span>
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">التالي</a>
+
+    <a href="?page={{ page_obj.paginator.num_pages }}
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">الأخيرة</a>
+  {% endif %}
+</div>
+{% endblock %}

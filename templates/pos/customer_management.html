@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة العملاء - فطاطري البركة{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/customers.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    /* تحسينات إضافية للتوافق مع البيانات الديناميكية */
+    .admin-container { direction: rtl; font-family: 'Cairo', sans-serif; }
+    .stat-trend.up { color: #2ecc71; font-weight: bold; }
+    .user-avatar { 
+        width: 40px; height: 40px; border-radius: 50%; 
+        display: flex; align-items: center; justify-content: center; 
+        font-weight: bold; font-size: 1.2rem;
+    }
+    .order-count { background: #e8f5e9; color: #2e7d32; padding: 4px 8px; border-radius: 12px; font-size: 0.85rem; }
+    .loyalty-points { color: #f39c12; font-weight: bold; }
+    .tab-btn { text-decoration: none; display: inline-block; }
+    .search-box button { background: none; border: none; cursor: pointer; }
+    
+    /* تنسيق التقسيم لصفحات */
+    .pagination a { text-decoration: none; color: inherit; }
+    .page-num.active { background-color: #3498db; color: white; border: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <header class="admin-header">
+        <div class="header-title">
+            <h1>إدارة العملاء</h1>
+            <p>إدارة بيانات العملاء، سجلات الطلبات، وإحصائيات التفاعل</p>
+        </div>
+        <button class="btn-add-customer" onclick="alert('سيتم إضافة نافذة تسجيل عميل جديد قريباً')">+ إضافة عميل جديد</button>
+    </header>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="stat-label">إجمالي العملاء</span>
+                <strong class="stat-value">{{ total_customers }}</strong>
+                <small class="stat-trend up">محدث الآن</small>
+            </div>
+            <div class="stat-icon blue">👥</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="stat-label">عملاء جدد</span>
+                <strong class="stat-value">{{ new_customers_count }}</strong>
+                <small class="stat-trend up">هذا الشهر</small>
+            </div>
+            <div class="stat-icon purple">👤</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="stat-label">العملاء النشطين</span>
+                <strong class="stat-value">{{ active_customers }}</strong>
+                <small class="stat-trend up">طلبات +5</small>
+            </div>
+            <div class="stat-icon green">🔥</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="stat-label">متوسط الطلبات</span>
+                <strong class="stat-value">{{ avg_orders }}</strong>
+                <small class="stat-trend up">لكل عميل</small>
+            </div>
+            <div class="stat-icon orange">📊</div>
+        </div>
+    </section>
+
+    <section class="filter-section">
+        <form method="GET" action="." class="search-box">
+            <input type="text" name="search" placeholder="بحث باسم العميل أو رقم الهاتف..." value="{{ search_query }}">
+            <input type="hidden" name="tab" value="{{ current_tab }}">
+            <button type="submit" class="search-icon">🔍</button>
+        </form>
+        
+        <div class="filter-tabs">
+            <a href="?tab=all&search={{ search_query }}" class="tab-btn {% if current_tab == 'all' or not current_tab %}active{% endif %}">الكل</a>
+            <a href="?tab=frequent&search={{ search_query }}" class="tab-btn {% if current_tab == 'frequent' %}active{% endif %}">الأكثر طلباً</a>
+            <a href="?tab=new&search={{ search_query }}" class="tab-btn {% if current_tab == 'new' %}active{% endif %}">عملاء جدد</a>
+        </div>
+    </section>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>العميل</th>
+                    <th>رقم الهاتف</th>
+                    <th>العنوان الملحوظ</th>
+                    <th>عدد الطلبات</th>
+                    <th>النقاط التقديرية</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td class="user-cell">
+                        <div class="user-avatar" style="background-color: #e3f2fd; color: #2196f3;">
+                            {{ customer.name|slice:":1"|upper }}
+                        </div>
+                        <div class="user-meta">
+                            <strong>{{ customer.name }}</strong>
+                            <span>معرف العميل: #{{ customer.id }}</span>
+                        </div>
+                    </td>
+                    <td class="phone-cell">{{ customer.mobil }}</td>
+                    <td>{{ customer.address|truncatechars:40 }}</td>
+                    <td><span class="order-count">{{ customer.number_of_orders }} طلب</span></td>
+                    <td><span class="loyalty-points">{{ customer.number_of_orders }} ⭐</span></td>
+                    <td>
+                        <div class="action-dropdown">
+                            <button class="btn-details" onclick="window.location.href='#'">عرض السجل</button>
+                            <button class="btn-more">⋮</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 50px; color: #95a5a6;">
+                        لا يوجد عملاء مسجلين حالياً أو لا توجد نتائج للبحث.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <footer class="table-footer">
+        <div class="pagination">
+            {% if customers.has_next %}
+                <a href="?page={{ customers.next_page_number }}&tab={{ current_tab }}&search={{ search_query }}" class="page-nav">›</a>
+            {% endif %}
+
+            {% for num in customers.paginator.page_range %}
+                {% if customers.number == num %}
+                    <button class="page-num active">{{ num }}</button>
+                {% elif num > customers.number|add:'-3' and num < customers.number|add:'3' %}
+                    <a href="?page={{ num }}&tab={{ current_tab }}&search={{ search_query }}" class="page-num">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if customers.has_previous %}
+                <a href="?page={{ customers.previous_page_number }}&tab={{ current_tab }}&search={{ search_query }}" class="page-nav">‹</a>
+            {% endif %}
+        </div>
+        
+        <div class="results-info">
+            عرض {{ customers.start_index }} إلى {{ customers.end_index }} من أصل {{ total_customers }} عميل
+        </div>
+    </footer>
+</div>
+
+<script>
+    // يمكن إضافة JavaScript هنا للتعامل مع الـ Dropdowns أو الـ Modals
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Customer Management Loaded");
+    });
+</script>
+{% endblock %}

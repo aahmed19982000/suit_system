@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/tasks.css' %}">
+  <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <title>قائمة المهام - نظام إدارة المهام</title>
+  <meta name="title" content="قائمة المهام - نظام إدارة المهام">
+  <meta name="description" content="استعرض وقم بإدارة جميع المهام في نظام إدارة المهام. وفر الوقت ونظم عملك بكفاءة عالية من خلال لوحة تحكم سهلة الاستخدام.">
+{% endblock %}
+  
+{% block content %}
+<div class="task-container">
+  <h1>📋 قائمة المهام</h1>
+
+  <!-- معلومات المستخدم الحالي -->
+  <div class="user-info">
+    👤 المستخدم الحالي: <strong>{{ request.user.username }}</strong> |
+    🛡️ الدور: <strong>{{ request.user.role }}</strong>
+  </div>
+
+  <form method="get" class="task-filter-form">
+    <label>
+      بحث:
+      <input type="text" name="q" placeholder="ابحث عن عنوان أو كاتب..." value="{{ search_query|default:'' }}">
+    </label>
+    <label>
+      الكاتب:
+      <select name="writer">
+        <option value="">-- الكل --</option>
+        {% for id, name in writers %}
+          <option value="{{ id }}" {% if id|stringformat:"s" == selected_writer|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      الحالة:
+      <select name="status">
+        <option value="">-- الكل --</option>
+        <option value="in_progress" {% if selected_status == "in_progress" %}selected{% endif %}>⏳ جاري</option>
+        <option value="upload" {% if selected_status == "upload" %}selected{% endif %}>📤 تم الرفع</option>
+        <option value="publish" {% if selected_status == "publish" %}selected{% endif %}>📢 تم النشر</option>
+        <option value="done" {% if selected_status == "done" %}selected{% endif %}>✅ مكتملة</option>
+      </select>
+    </label>
+
+    <label>
+      موقع النشر:
+      <select name="site">
+        <option value="">-- الكل --</option>
+        {% for id, name in sites %}
+          <option value="{{ id }}" {% if id|stringformat:"s" == selected_site %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button type="submit">🔍 تصفية</button>
+    <a href="{% url 'task_list' %}" class="reset-filter">🔄 إعادة تعيين</a>
+  </form>
+
+  <div class="task-table-container">
+    <table class="task-table">
+      <thead>
+        <tr>
+          <th>الكاتب</th>
+          <th>[النوع]</th>
+          <th>المقال</th>
+          <th>تفاصيل المقال</th>
+          <th>رابط المقال</th>
+          <th>موقع النشر</th>
+          <th>تاريخ النشر</th>
+          <th>الحالة</th>
+          <th>الإجراءات</th>
+          <th>عرض المزيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in page_obj %}
+        <tr>
+          <td>{{ task.writer.get_full_name|default:task.writer.username }}</td>
+          <td>{{ task.article_type_W_R_A_B }}</td>
+          <td>{{ task.article_title }}</td>
+          <td>{{ task.article_details }}</td>
+          <td>
+            {% if task.article_link %}
+              <a href="{{ task.article_link }}" target="_blank">الرابط</a>
+            {% else %}
+              <span style="color: gray;">لا يوجد رابط</span>
+            {% endif %}
+          </td>
+          <td>{{ task.publish_site }}</td>
+          <td>{{ task.publish_date }}</td>
+          <td>
+            <form method="post" action="{% url 'update_task_status' task.id %}">
+              {% csrf_token %}
+              <select name="status" onchange="this.form.submit()" class="status-select">
+                <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>⏳ جاري العمل</option>
+                <option value="upload" {% if task.status == 'upload' %}selected{% endif %}>📤 تم الرفع</option>
+                <option value="publish" {% if task.status == 'publish' %}selected{% endif %}>📢 تم النشر</option>
+                <option value="done" {% if task.status == 'done' %}selected{% endif %}>✅ مكتملة</option>
+              </select>
+            </form>
+          </td>
+          <td>
+            {% if request.user.role == "manager" %}
+              <a href="{% url 'edit_task' task.id %}" class="action-btn edit-btn">✏️ تعديل</a>
+              <a href="{% url 'delete_task' task.id %}" class="action-btn delete-btn" onclick="return confirm('هل أنت متأكد من الحذف؟');">🗑️ حذف</a>
+            {% else %}
+              <span style="color: #6c757d;">لا توجد صلاحية</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="#" onclick="openTaskDetails('{{ task.id }}'); return false;" class="action-btn view-btn">👁️ عرض</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- الباجيناشن -->
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page=1
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">الأولى</a>
+
+    <a href="?page={{ page_obj.previous_page_number }}
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">السابق</a>
+  {% endif %}
+
+  <span>صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}</span>
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">التالي</a>
+
+    <a href="?page={{ page_obj.paginator.num_pages }}
+      {% if search_query %}&q={{ search_query }}{% endif %}
+      {% if selected_writer %}&writer={{ selected_writer }}{% endif %}
+      {% if selected_status %}&status={{ selected_status }}{% endif %}
+      {% if selected_site %}&site={{ selected_site }}{% endif %}
+    ">الأخيرة</a>
+  {% endif %}
+</div>
+
+
+  {% if request.user.role == "manager" and form %}
+    <div class="task-form-container">
+      <h2>➕ {% if edit_mode %}تعديل المهمة{% else %}إضافة مهمة جديدة{% endif %}</h2>
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">{% if edit_mode %}تحديث{% else %}إضافة{% endif %}</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/task_popup.js' %}"></script>
+  <script src="{% static 'js/notifications.js' %}"></script>
+{% endblock %}

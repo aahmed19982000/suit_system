@@ -1,0 +1,95 @@
+.access-denied-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 20px;
+}
+
+.error-card {
+    background: white;
+    max-width: 500px;
+    width: 100%;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f1f1;
+}
+
+.error-icon {
+    position: relative;
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.cross-mark {
+    position: absolute;
+    font-size: 1.5rem;
+    bottom: 5px;
+    right: 35%;
+    background: white;
+    border-radius: 50%;
+}
+
+.error-title {
+    color: #2d3436;
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+
+.error-message {
+    color: #636e72;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.info-box {
+    background: #fff9f0;
+    border-right: 4px solid #e67e22;
+    padding: 15px;
+    margin: 25px 0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #a0522d;
+    text-align: right;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.btn-primary {
+    background: #e67e22;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.btn-secondary {
+    background: #f1f2f6;
+    color: #2d3436;
+    padding: 12px 25px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.btn-primary:hover { background: #d35400; transform: translateY(-2px); }
+.btn-secondary:hover { background: #dfe4ea; }
+
+.footer-help {
+    margin-top: 30px;
+    font-size: 0.75rem;
+    color: #b2bec3;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}

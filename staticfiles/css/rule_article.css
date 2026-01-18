@@ -1,0 +1,355 @@
+:root {
+  --primary: #2563eb;
+  --primary-light: #7c3aed;
+  --success: #10b981;
+  --danger: #ef4444;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, var(--gray-50) 0%, #f0f4ff 100%);
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* صفحة الرأس */
+.page-header {
+  padding: 2.5rem 0 1.5rem;
+  text-align: right;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.page-header .lead {
+  font-size: 1rem;
+  color: var(--gray-600);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* الأزرار */
+.btn {
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn:focus-visible {
+  outline-color: var(--primary);
+  outline-offset: 4px;
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.btn.primary:hover {
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+}
+
+.btn.secondary {
+  background: var(--gray-100);
+  color: var(--primary);
+  border: 1.5px solid var(--gray-200);
+}
+
+.btn.secondary:hover {
+  background: var(--gray-200);
+  border-color: var(--gray-300);
+}
+
+.btn.danger {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+}
+
+.btn.danger:hover {
+  background: #fecaca;
+  border-color: #f87171;
+}
+
+.btn.submit {
+  background: linear-gradient(135deg, var(--success), #059669);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn.submit:hover {
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+/* تحكمات أعلى النموذج */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+/* قائمة البطاقات */
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* بطاقة القاعدة */
+.rule-item {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--gray-200);
+  transition: var(--transition);
+}
+
+.rule-item:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--gray-300);
+  transform: translateY(-2px);
+}
+
+.rule-item.new {
+  background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%);
+  border: 1.5px dashed var(--primary);
+}
+
+/* رأس البطاقة */
+.rule-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.rule-head strong {
+  font-size: 1.05rem;
+  color: var(--gray-900);
+  font-weight: 700;
+}
+
+.rule-head .rule-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* الحقول */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  text-transform: capitalize;
+}
+
+.field input[type="text"],
+.field textarea,
+.field select {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--gray-300);
+  background: white;
+  font-size: 0.95rem;
+  color: var(--gray-900);
+  font-family: inherit;
+  transition: var(--transition);
+  resize: vertical;
+}
+
+.field input[type="text"]:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--gray-400);
+}
+
+.field input[type="text"]:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #f8faff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.field input[type="text"]:required:invalid,
+.field textarea:required:invalid,
+.field select:required:invalid {
+  border-color: #ef4444;
+}
+
+/* حالة لا توجد عناصر */
+.empty {
+  color: var(--gray-600);
+  padding: 2rem;
+  text-align: center;
+  border-radius: 12px;
+  background: var(--gray-50);
+  border: 2px dashed var(--gray-300);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* استجابة الأجهزة المتوسطة */
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rule-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .rule-head .rule-actions {
+    width: 100%;
+  }
+
+  .rule-head .rule-actions .btn {
+    flex: 1;
+  }
+}
+
+/* استجابة الأجهزة الصغيرة */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .page-header {
+    padding: 1.5rem 0 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .page-header .lead {
+    font-size: 0.9rem;
+  }
+
+  .form-actions {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .rule-item {
+    padding: 1.25rem;
+  }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .field input[type="text"],
+  .field textarea,
+  .field select {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .rules-list {
+    gap: 1rem;
+  }
+
+  .empty {
+    padding: 1.5rem;
+  }
+}
+
+/* تحسين الطباعة */
+@media print {
+  body {
+    background: white;
+  }
+
+  .form-actions,
+  .btn,
+  .rule-actions {
+    display: none;
+  }
+
+  .rule-item {
+    page-break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid var(--gray-300);
+  }
+}

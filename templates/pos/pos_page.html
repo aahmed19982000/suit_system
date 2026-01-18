@@ -1,0 +1,407 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}نقطة البيع - فطاطري البركة{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pos.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    /* تنسيقات واجهة السلة والفوتر */
+    .cart-sidebar {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 20px);
+        position: sticky;
+        top: 10px;
+    }
+
+    #cartItemsContainer {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 5px;
+        min-height: 200px;
+    }
+
+    .btn-return-action {
+        background-color: #f39c12;
+        color: white !important;
+        text-decoration: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        margin-left: 10px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* تنسيق النوافذ المنبثقة (Modals) */
+    .custom-modal {
+        display: none; /* مخفي افتراضياً */
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(3px);
+    }
+    .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        width: 420px;
+        direction: rtl;
+        font-family: 'Cairo', sans-serif;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal-btn {
+        width: 100%;
+        padding: 15px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1.1rem;
+        transition: 0.2s;
+    }
+    .btn-table { background: #27ae60; color: white; }
+    .btn-delivery { background: #3498db; color: white; }
+    .btn-search { background: #8e44ad; color: white; margin-bottom: 5px; }
+    
+    .input-field {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 2px solid #eee;
+        border-radius: 8px;
+        font-family: 'Cairo';
+        box-sizing: border-box;
+    }
+    .input-field:focus { border-color: #3498db; outline: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-wrapper">
+    <section class="products-section">
+        <header class="pos-top-bar">
+            <div class="search-container">
+                <i class="search-icon">🔍</i>
+                <input type="text" id="posSearch" placeholder="ابحث عن صنف...">
+            </div>
+            <div class="user-actions">
+                <a href="{% url 'orders' %}" class="btn-return-action">🔄 إضافة مرتجع</a>
+                <button class="action-circle">🔔</button>
+                <button class="action-circle">⚙️</button>
+            </div>
+        </header>
+
+        <nav class="categories-container">
+            <div class="cat-track">
+                <button class="cat-pill active" data-filter="all">⭐ الكل</button>
+                {% for category in categories %}
+                    <button class="cat-pill" data-filter="{{ category.id }}">{{ category.name }}</button>
+                {% endfor %}
+            </div>
+        </nav>
+
+        <div class="products-layout" id="productsGrid">
+            {% for product in products %}
+            <div class="product-item" data-category="{{ product.Category.id }}">
+                <div class="product-main-info">
+                    <h3 class="product-title">{{ product.name }}</h3>
+                    <div class="product-price-tag">{{ product.price }} <span>ج.م</span></div>
+                </div>
+                <p class="product-desc">{{ product.description|default:"-" }}</p>
+                <button class="add-to-cart-btn" 
+                        data-id="{{ product.id }}" 
+                        data-name="{{ product.name }}" 
+                        data-price="{{ product.price }}"> إضافة + </button>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <aside class="cart-sidebar">
+        <div class="cart-header">
+            <div class="cart-meta">
+                <h2>الطلب الحالي</h2>
+                <span class="order-id" id="displayOrderId">#ORD-جديد</span>
+            </div>
+            <button class="clear-cart" id="clearCart">🗑️</button>
+        </div>
+
+        <div class="cart-items-container" id="cartItemsContainer">
+            <div class="empty-cart-msg">السلة فارغة</div>
+        </div>
+
+        <div class="cart-summary-footer">
+            <div class="billing-details">
+                <div class="bill-row"><span>المجموع الفرعي</span> <span id="subtotalDisplay">0.00 ج.م</span></div>
+                <div class="bill-row"><span>الضريبة (0%)</span> <span id="taxDisplay">0.00 ج.م</span></div>
+                <div class="bill-row grand-total"><span>الإجمالي النهائي</span> <span id="totalDisplay">0.00 ج.م</span></div>
+            </div>
+
+            <div class="checkout-grid">
+                <button class="check-btn cash" id="cashCheckout">تنفيذ الطلب </button>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<div id="orderTypeModal" class="custom-modal">
+    <div class="modal-content text-center" style="text-align: center;">
+        <h3 style="margin-bottom: 20px;">اختر نوع الطلب</h3>
+        <button class="modal-btn btn-table" onclick="selectOrderType('table')">عميل فرع</button>
+        <button class="modal-btn btn-delivery" onclick="selectOrderType('delivery')">🛵 طلب دليفري / توصيل</button>
+        <button onclick="closeModals()" style="background:none; border:none; color:#e74c3c; cursor:pointer; margin-top:10px;">إلغاء العملية</button>
+    </div>
+</div>
+
+<div id="customerModal" class="custom-modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">بيانات عميل الدليفري</h3>
+        
+        <label>رقم الهاتف:</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="custPhone" class="input-field" placeholder="ادخل رقم الهاتف للاستعلام">
+            <button class="modal-btn btn-search" style="width: 80px;" onclick="searchCustomer()">بحث</button>
+        </div>
+
+        <div id="customerDetailsForm" style="display:none; margin-top:10px;">
+            <label>اسم العميل:</label>
+            <input type="text" id="custName" class="input-field" placeholder="اسم العميل">
+            <label>العنوان بالتفصيل:</label>
+            <textarea id="custAddress" class="input-field" style="height: 80px;" placeholder="العنوان، الدور، الشقة..."></textarea>
+            
+            <button class="modal-btn btn-table" style="margin-top: 15px;" onclick="finalizeOrder()">تأكيد وتسجيل الطلب 🖨️</button>
+        </div>
+        <button onclick="closeModals()" style="width:100%; background:none; border:none; color:gray; cursor:pointer;">رجوع</button>
+    </div>
+</div>
+
+<script>
+let cart = [];
+let currentOrderType = 'table';
+
+// إضافة العناصر للسلة
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('add-to-cart-btn')) {
+        const btn = e.target;
+        const product = { 
+            id: btn.dataset.id, 
+            name: btn.dataset.name, 
+            price: parseFloat(btn.dataset.price), 
+            qty: 1 
+        };
+        const existing = cart.find(item => item.id === product.id);
+        if (existing) existing.qty++; else cart.push(product);
+        renderCart();
+    }
+});
+
+function renderCart() {
+    const container = document.getElementById('cartItemsContainer');
+    container.innerHTML = '';
+    let subtotal = 0;
+    if (cart.length === 0) container.innerHTML = '<div class="empty-cart-msg">السلة فارغة</div>';
+    cart.forEach(item => {
+        subtotal += (item.price * item.qty);
+        container.innerHTML += `<div class="cart-card">
+            <div class="cart-card-info"><h4>${item.name}</h4><div class="price-calc">${item.price} × ${item.qty} = <strong>${(item.price * item.qty).toFixed(2)} ج.م</strong></div></div>
+            <div class="cart-card-actions"><div class="stepper"><button onclick="updateQty('${item.id}', -1)">−</button><input type="number" value="${item.qty}" readonly><button onclick="updateQty('${item.id}', 1)">+</button></div></div>
+        </div>`;
+    });
+    document.getElementById('subtotalDisplay').innerText = subtotal.toFixed(2) + ' ج.م';
+    document.getElementById('totalDisplay').innerText = subtotal.toFixed(2) + ' ج.م';
+}
+
+window.updateQty = function(id, change) {
+    const item = cart.find(i => i.id === id);
+    if (item) { item.qty += change; if (item.qty <= 0) cart = cart.filter(i => i.id !== id); renderCart(); }
+}
+
+// فتح نافذة اختيار النوع عند الضغط على كاش
+document.getElementById('cashCheckout').onclick = () => {
+    if (cart.length === 0) return alert('السلة فارغة!');
+    document.getElementById('orderTypeModal').style.display = 'flex';
+};
+
+function selectOrderType(type) {
+    currentOrderType = type;
+    document.getElementById('orderTypeModal').style.display = 'none';
+    if (type === 'table') {
+        if(confirm('هل تريد تسجيل طلب طاولة؟')) finalizeOrder();
+    } else {
+        document.getElementById('customerModal').style.display = 'flex';
+        document.getElementById('customerDetailsForm').style.display = 'none';
+        document.getElementById('custPhone').value = '';
+    }
+}
+
+// دالة البحث عن العميل
+function searchCustomer() {
+    const phone = document.getElementById('custPhone').value.trim();
+    if (!phone) return alert('يرجى إدخال الرقم');
+
+    // استخدام المسار الديناميكي
+    const url = "{% url 'search_customer' %}?phone=" + phone;
+
+    fetch(url)
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('customerDetailsForm').style.display = 'block';
+        if (data.found) {
+            document.getElementById('custName').value = data.name;
+            document.getElementById('custAddress').value = data.address;
+        } else {
+            alert('رقم جديد، يرجى كتابة البيانات');
+            document.getElementById('custName').value = '';
+            document.getElementById('custAddress').value = '';
+        }
+    })
+    .catch(err => alert('خطأ في الاتصال بالسيرفر'));
+}
+
+// تنفيذ الطلب النهائي
+function finalizeOrder() {
+    const total = parseFloat(document.getElementById('totalDisplay').innerText);
+    const orderDisplay = document.getElementById('displayOrderId');
+    
+    let customerData = null;
+    if (currentOrderType === 'delivery') {
+        customerData = {
+            phone: document.getElementById('custPhone').value,
+            name: document.getElementById('custName').value,
+            address: document.getElementById('custAddress').value
+        };
+        if (!customerData.name || !customerData.address) return alert('يرجى إكمال بيانات العميل');
+    }
+
+    fetch("{% url 'cash_checkout' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ cart, total, order_type: currentOrderType, customer_data: customerData })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            // --- بدء عملية التحضير للطباعة ---
+            document.getElementById('print-order-id').innerText = data.order_id;
+            document.getElementById('print-date').innerText = new Date().toLocaleString('ar-EG');
+            document.getElementById('print-order-type').innerText = (currentOrderType === 'delivery') ? "طلب دليفري" : "طلب صالة";
+            document.getElementById('print-total').innerText = total.toFixed(2);
+
+            // بيانات العميل
+            const custInfoDiv = document.getElementById('print-customer-info');
+            if (currentOrderType === 'delivery' && customerData) {
+                custInfoDiv.style.display = 'block';
+                document.getElementById('print-cust-name').innerText = customerData.name;
+                document.getElementById('print-cust-phone').innerText = customerData.phone;
+                document.getElementById('print-cust-address').innerText = customerData.address;
+            } else {
+                custInfoDiv.style.display = 'none';
+            }
+
+            // تعبئة الأصناف
+            const itemsBody = document.getElementById('print-items-body');
+            itemsBody.innerHTML = '';
+            cart.forEach(item => {
+                itemsBody.innerHTML += `
+                    <tr>
+                        <td style="padding: 5px 0;">${item.name}</td>
+                        <td style="text-align: center;">${item.qty}</td>
+                        <td style="text-align: left;">${(item.price * item.qty).toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            // تنفيذ الطباعة
+            setTimeout(() => {
+                window.print();
+                // تنظيف السلة وإعادة التعيين بعد الطباعة
+                alert('تم تسجيل الطلب بنجاح! رقم: ' + data.order_id);
+                cart = [];
+                renderCart();
+                closeModals();
+                orderDisplay.innerText = "#ORD-جديد";
+            }, 500);
+
+        } else {
+            alert('خطأ: ' + data.message);
+        }
+    })
+    .catch(err => alert('خطأ في الاتصال بالسيرفر'));
+}
+
+function closeModals() { document.querySelectorAll('.custom-modal').forEach(m => m.style.display='none'); }
+
+// الفلترة والبحث
+document.getElementById('posSearch').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.style.display = item.querySelector('.product-title').innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+    });
+};
+
+document.querySelectorAll('.cat-pill').forEach(pill => {
+    pill.onclick = function() {
+        document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        const filter = this.dataset.filter;
+        document.querySelectorAll('.product-item').forEach(item => {
+            item.style.display = (filter === 'all' || item.dataset.category === filter) ? 'flex' : 'none';
+        });
+    };
+});
+</script>
+
+<div id="receipt-print-area" style="display: none;">
+    <div class="receipt-container" style="width: 80mm; font-family: 'Cairo', sans-serif; direction: rtl; padding: 5px;">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin: 0;">فطاطري عباد الرحمن</h2>
+            <p style="font-size: 12px; margin: 5px 0;">فرع طهطا - رقم الهاتف</p>
+            <hr>
+            <h4 id="print-order-type" style="margin: 5px 0; background: #eee; padding: 2px;"></h4>
+        </div>
+
+        <div style="font-size: 13px; margin-bottom: 10px;">
+            <div>رقم الطلب: <span id="print-order-id"></span></div>
+            <div>التاريخ: <span id="print-date"></span></div>
+            <div id="print-customer-info" style="display: none;">
+                <hr>
+                <div>العميل: <span id="print-cust-name"></span></div>
+                <div>الهاتف: <span id="print-cust-phone"></span></div>
+                <div>العنوان: <span id="print-cust-address"></span></div>
+            </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead style="border-bottom: 1px dashed #000;">
+                <tr>
+                    <th style="text-align: right;">الصنف</th>
+                    <th>الكمية</th>
+                    <th style="text-align: left;">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody id="print-items-body">
+                </tbody>
+        </table>
+
+        <hr style="border-top: 1px dashed #000;">
+        <div style="text-align: left; font-weight: bold; font-size: 15px;">
+            الإجمالي النهائي: <span id="print-total"></span> ج.م
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; font-size: 11px;">
+            <p>شكراً لزيارتكم!</p>
+            <p>برمجة وتطوير احمد ابراهيم </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

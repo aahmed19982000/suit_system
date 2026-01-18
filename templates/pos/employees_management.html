@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة الموظفين - فطاطري البركة{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/employees.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <header class="admin-header">
+        <div class="header-title">
+            <nav class="breadcrumb">الرئيسية / إدارة الموظفين</nav>
+            <h1>إدارة الموظفين</h1>
+            <p>عرض وإدارة بيانات جميع الموظفين في المطعم</p>
+        </div>
+        <a href="{% url 'signup' %}" class="btn-add-employee">+ إضافة موظف جديد</a>
+
+    </header>
+
+    <!-- الإحصائيات (ثابتة حالياً) -->
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon-bg gray"><i class="icon">👥</i></div>
+            <div class="stat-details">
+                <span class="stat-label">إجمالي الموظفين</span>
+                <strong class="stat-value">{{ employees.count }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <div class="table-container">
+        <table class="employee-table">
+            <thead>
+                <tr>
+                    <th>الموظف</th>
+                    <th>الدور الوظيفي</th>
+                    <th>معلومات الاتصال</th>
+                    <th>تاريخ التعيين</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                {% for employee in employees %}
+                <tr>
+                    <td class="user-info-cell">
+                        <div class="name-id">
+                            <strong>{{ employee.get_full_name|default:employee.username }}</strong>
+                            <span>EMP-{{ employee.id }}#</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        <span class="role-badge manager">
+                            {{ employee.get_role_display|default:"غير محدد" }}
+                        </span>
+                    </td>
+
+                    <td class="contact-cell">
+                        {% if employee.mobile %}
+                            <div>📞 {{ employee.mobile }}</div>
+                        {% endif %}
+                        <div class="email">{{ employee.email }}</div>
+                    </td>
+
+                    <td>
+                        {{ employee.date_joined|date:"d M Y" }}
+                    </td>
+
+                  
+                    <td>
+                        <form method="POST" action="{% url 'delete_employee' employee.id %}"
+                              onsubmit="return confirm('هل أنت متأكد من حذف الموظف؟');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-edit-dots">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;">
+                        لا يوجد موظفين حالياً
+                    </td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+
+    <footer class="pagination-footer">
+        <div class="table-info">
+            عرض {{ employees.count }} موظف
+        </div>
+    </footer>
+</div>
+{% endblock %}

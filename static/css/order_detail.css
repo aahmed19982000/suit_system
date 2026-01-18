@@ -1,0 +1,35 @@
+.order-detail-container { padding: 30px; direction: rtl; max-width: 1000px; margin: auto; }
+
+.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+
+.status-badge { padding: 8px 15px; border-radius: 20px; font-weight: bold; background: #eee; }
+.status-returned { background: #ffd7d7; color: #d63031; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+
+.info-card, .actions-card, .items-card { 
+    background: white; padding: 20px; border-radius: 12px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;
+}
+
+.info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
+.grand-total { color: #e67e22; font-size: 1.2rem; border-top: 2px solid #eee; margin-top: 10px; }
+
+/* الأزرار */
+.btn-action { 
+    width: 100%; padding: 12px; border-radius: 8px; border: none; 
+    font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.3s;
+}
+
+.btn-action.return { background: #f39c12; color: white; }
+.btn-action.edit { background: #3498db; color: white; margin-top: 5px; }
+.btn-action.delete { background: #e74c3c; color: white; margin-top: 20px; }
+
+.admin-note { color: #7f8c8d; font-size: 0.8rem; margin: 10px 0; font-weight: bold; }
+
+.edit-group { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+.custom-select { width: 100%; padding: 8px; border-radius: 5px; margin-bottom: 5px; }
+
+.items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+.items-table th { background: #f8f9fa; padding: 12px; text-align: right; }
+.items-table td { padding: 12px; border-bottom: 1px solid #eee; }

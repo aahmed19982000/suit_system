@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/company_details.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<title>تفاصيل {{ company.name }} - نظام إدارة الشركات</title>
+{% endblock %}
+
+{% block content %}
+<div class="company-details-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="back-action">
+            <a href="{% url 'company_list' %}" class="btn-back">
+                <i class="fas fa-arrow-right"></i>
+                العودة للقائمة
+            </a>
+        </div>
+        
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="fas fa-building"></i>
+                {{ company.name }}
+            </h1>
+            <div class="company-meta">
+                <span class="company-id">#{{ company.id }}</span>
+                <span class="company-date">
+                    <i class="far fa-clock"></i>
+                    {{ company.created_at|date:"Y/m/d" }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <div class="action-buttons">
+                <a href="{% url 'company_edit' company.id %}">class="btn-action btn-edit">
+                    <i class="fas fa-edit"></i>
+                    تعديل
+                </a>
+                <button class="btn-action btn-print" onclick="window.print()">
+                    <i class="fas fa-print"></i>
+                    طباعة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-overview">
+        <div class="stat-card">
+            <div class="stat-icon amount">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">
+                    {{ company.amount_paid|default:0|floatformat:2 }} <small>دولار</small>
+                </h3>
+                <p class="stat-label">المبلغ المدفوع</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon sites">
+                <i class="fas fa-satellite-dish"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ company.site_puplished.count }}</h3>
+                <p class="stat-label">المواقع المنشورة</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon contracts">
+                <i class="fas fa-file-contract"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ company.contract_duration }}</h3>
+                <p class="stat-label">تفاصيل العقود</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon calendar">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">
+                    {% if company.end_date %}
+                        {{ days_until_expiry }} <small>يوم</small>
+                    {% else %}
+                        <small>بدون تاريخ</small>
+                    {% endif %}
+                </h3>
+                <p class="stat-label">الأيام المتبقية</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+        <!-- Column 1: Basic Information -->
+        <div class="info-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    المعلومات الأساسية
+                </h2>
+            </div>
+            
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-signature"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>اسم الشركة</h4>
+                        <p>{{ company.name }}</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>البريد الإلكتروني</h4>
+                        <p>
+                            {% if company.email %}
+                            <a href="mailto:{{ company.email }}">{{ company.email }}</a>
+                            {% else %}
+                            <span class="no-data">غير محدد</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>موقع الشركة</h4>
+                        <p>
+                            {% if company.website %}
+                            <a href="{{ company.website }}" target="_blank" class="website-link">
+                                {{ company.website|truncatechars:30 }}
+                                <i class="fas fa-external-link-alt external-icon"></i>
+                            </a>
+                            {% else %}
+                            <span class="no-data">غير محدد</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-calendar-plus"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>تاريخ الإضافة</h4>
+                        <p>{{ company.created_at|date:"Y/m/d - h:i A" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 2: Contract Information -->
+        <div class="info-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-file-contract"></i>
+                    معلومات العقد
+                </h2>
+            </div>
+            
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>تاريخ الانتهاء</h4>
+                        <p>
+                            {% if company.end_date %}
+                            <span class="date-badge {% if company.is_expired %}expired{% elif company.is_about_to_expire %}warning{% else %}active{% endif %}">
+                                {{ company.end_date|date:"Y/m/d" }}
+                                {% if company.is_expired %}
+                                <span class="status-indicator">منتهي</span>
+                                {% elif company.is_about_to_expire %}
+                                <span class="status-indicator warning">ينتهي قريباً</span>
+                                {% else %}
+                                <span class="status-indicator success">نشط</span>
+                                {% endif %}
+                            </span>
+                            {% else %}
+                            <span class="no-data">غير محدد</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>مدة العقد</h4>
+                        <p>
+                            {% if company.contract_duration %}
+                            <span class="contract-duration-value">
+                                {{ company.contract_duration.duration }} سنة
+                            </span>
+                            {% else %}
+                            <span class="no-data">غير محدد</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-money-bill"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>المبلغ المدفوع</h4>
+                        <p class="amount-value">
+                            {{ company.amount_paid|default:0|floatformat:2 }} دولار
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>مدة متبقية</h4>
+                        <p>
+                            {% if days_until_expiry is not None %}
+                                <span class="days-count {% if days_until_expiry == 0 or company.end_date < today %}expired{% elif days_until_expiry <= 30 %}warning{% else %}normal{% endif %}">
+                                    {{ days_until_expiry }} يوم
+                                </span>
+                            {% else %}
+                                <span class="no-data">-</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 3: Published Sites -->
+        <div class="info-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-satellite-dish"></i>
+                    المواقع المنشور عليها
+                </h2>
+            </div>
+            
+            <div class="sites-grid">
+                {% if company.site_puplished.all %}
+                    {% for site in company.site_puplished.all %}
+                    <div class="site-card">
+                        <div class="site-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="site-info">
+                            <h4>{{ site.name }}</h4>
+                            {% if site.description %}
+                            <p class="site-description">{{ site.description|truncatechars:50 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <h3>لا توجد مواقع منشورة</h3>
+                        <p>لم يتم تحديد أي مواقع للنشر بعد</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+ <!-- Column 2: Contract Information -->
+<div class="info-section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-file-contract"></i>
+            معلومات العقد
+        </h2>
+    </div>
+    
+    <div class="info-cards">
+        <!-- بطاقة 1: تاريخ الانتهاء -->
+        <div class="info-card">
+            <!-- ... -->
+        </div>
+        
+        <!-- بطاقة 2: مدة العقد --> 
+        <div class="info-card">
+            <div class="info-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="info-content">
+                <h4>مدة العقد</h4>
+                <p>
+                    {% if company.contract_duration %}
+                    <span class="contract-duration-value">
+                        {{ company.contract_duration.duration }}
+                    </span>
+                    {% else %}
+                    <span class="no-data">غير محدد</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        
+        <!-- بقية البطاقات -->
+    </div>
+</div>
+
+        <!-- Column 5: Notes -->
+        <div class="info-section full-width">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-sticky-note"></i>
+                    الملاحظات
+                </h2>
+            </div>
+            
+            <div class="notes-container">
+                {% if company.nots %}
+                <div class="notes-card">
+                    <div class="notes-header">
+                        <div class="notes-icon">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <div class="notes-info">
+                            <h4>ملاحظات الشركة</h4>
+                            <span class="notes-date">
+                                <i class="far fa-clock"></i>
+                                تاريخ الإضافة: {{ company.created_at|date:"Y/m/d" }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="notes-content">
+                        <p>{{ company.nots|linebreaks }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-notes">
+                    <div class="empty-icon">
+                        <i class="fas fa-sticky-note"></i>
+                    </div>
+                    <h3>لا توجد ملاحظات</h3>
+                    <p>لم يتم إضافة أي ملاحظات للشركة بعد</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h3 class="actions-title">
+                <i class="fas fa-bolt"></i>
+                إجراءات سريعة
+            </h3>
+            
+            <div class="actions-grid">
+                <a href="{% url 'company_edit' company.id %}" class="action-item">
+                    <div class="action-icon edit">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="action-content">
+                        <h4>تعديل البيانات</h4>
+                        <p>تحديث معلومات الشركة</p>
+                    </div>
+                    <i class="fas fa-arrow-left action-arrow"></i>
+                </a>
+                
+                <a href="{% url 'company_list' %}" class="action-item">
+                    <div class="action-icon list">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <div class="action-content">
+                        <h4>عودة للقائمة</h4>
+                        <p>عرض جميع الشركات</p>
+                    </div>
+                    <i class="fas fa-arrow-left action-arrow"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="page-footer">
+        <div class="footer-info">
+            <span class="footer-item">
+                <i class="fas fa-user-circle"></i>
+                تم الإنشاء بواسطة: النظام
+            </span>
+            <span class="footer-item">
+                <i class="fas fa-history"></i>
+                تاريخ الإضافة: {{ company.created_at|date:"Y/m/d" }}
+            </span>
+        </div>
+        
+        <div class="footer-actions">
+            <a href="{% url 'company_delete' company.id %}"> class="btn-delete" 
+               onclick="return confirm('هل أنت متأكد من حذف شركة {{ company.name }}؟')">
+                <i class="fas fa-trash"></i>
+                حذف الشركة
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add animation to cards on load
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.info-card, .site-card, .contract-card');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// Print page
+function printPage() {
+    window.print();
+}
+</script>
+{% endblock %}

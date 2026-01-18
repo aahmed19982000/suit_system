@@ -1,0 +1,54 @@
+/* تنسيقات إدارة الموظفين */
+.admin-container { padding: 30px; background: #fcfcfc; direction: rtl; }
+
+/* Breadcrumb */
+.breadcrumb { font-size: 0.8rem; color: #bdc3c7; margin-bottom: 10px; }
+
+/* Header */
+.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.btn-add-employee { background: #e67e22; color: white; border: none; padding: 12px 25px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 35px; }
+.stat-card { background: white; padding: 25px; border-radius: 15px; border: 1px solid #f0f0f0; display: flex; align-items: center; gap: 20px; }
+.stat-icon-bg { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+.stat-icon-bg.gray { background: #f8f9fa; color: #e67e22; }
+.stat-icon-bg.green { background: #e8f5e9; color: #2ecc71; }
+.stat-icon-bg.orange { background: #fff3e0; color: #f39c12; }
+
+/* Filter Bar */
+.filter-toolbar { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 25px; }
+.search-wrapper { position: relative; flex: 1; }
+.search-wrapper input { width: 100%; padding: 12px 45px 12px 15px; border-radius: 10px; border: 1px solid #eee; }
+.search-icon { position: absolute; right: 15px; top: 12px; color: #bdc3c7; }
+
+.filter-select { padding: 10px 15px; border-radius: 8px; border: 1px solid #eee; background: white; color: #7f8c8d; }
+
+/* Employee Table */
+.table-container { background: white; border-radius: 15px; border: 1px solid #f0f0f0; overflow: hidden; }
+.employee-table { width: 100%; border-collapse: collapse; text-align: right; }
+.employee-table th { padding: 18px; background: #fafafa; color: #7f8c8d; font-weight: 500; border-bottom: 1px solid #eee; }
+.employee-table td { padding: 18px; border-bottom: 1px solid #f9f9f9; vertical-align: middle; }
+
+/* Avatar & Name */
+.user-info-cell { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
+.name-id strong { display: block; color: #2c3e50; }
+.name-id span { font-size: 0.75rem; color: #bdc3c7; }
+
+/* Role Badges */
+.role-badge { padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+.role-badge.manager { background: #f3e5f5; color: #9b59b6; }
+.role-badge.chef { background: #e3f2fd; color: #3498db; }
+
+/* Status Dot */
+.status-dot { position: relative; padding-right: 18px; font-size: 0.85rem; }
+.status-dot::before { content: ""; position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; }
+.status-dot.active::before { background: #2ecc71; }
+.status-dot.on-leave::before { background: #f1c40f; }
+
+/* Pagination */
+.pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px; }
+.page-btn { padding: 8px 15px; border: 1px solid #eee; background: white; border-radius: 6px; cursor: pointer; }
+.page-num { width: 35px; height: 35px; border: 1px solid #eee; background: white; border-radius: 6px; cursor: pointer; }
+.page-num.active { background: #e67e22; color: white; border-color: #e67e22; }

@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>كاشير الفطاطري - تسجيل الدخول</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body class="login-page">
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="card-header-img">
+                <img src="{% static 'images/pastry-header.jpg' %}" alt="كاشير الفطاطري">
+                <div class="header-overlay">
+                    <h2>كاشير فطاطري عباد الرحمان</h2>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <h3>تسجيل دخول الموظفين</h3>
+                <p class="subtitle">أدخل بياناتك للوصول إلى لوحة التحكم</p>
+
+                {% if messages %}
+                    <div class="messages-container">
+                        {% for message in messages %}
+                            <div class="alert {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="input-group">
+                        <label>اسم المستخدم</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">👤</span>
+                            <input type="text" name="username" placeholder="أدخل اسم المستخدم" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>كلمة المرور</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" name="password" id="passwordField" placeholder="أدخل كلمة المرور" required>
+                            <span class="toggle-password">👁️</span>
+                        </div>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="remember-me">
+                            <input type="checkbox" name="remember">
+                            <span>تذكرني</span>
+                        </label>
+                        <a href="#" class="forgot-link">نسيت كلمة المرور؟</a>
+                    </div>
+
+                    <button type="submit" class="btn-login">
+                        <span>تسجيل الدخول</span>
+                        <i class="login-icon">➔</i>
+                    </button>
+                </form>
+            </div>
+            
+            <div class="card-footer">
+                <span>نظام إدارة المطاعم تمصيم وتطوير أ/احمد ابراهيم </span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

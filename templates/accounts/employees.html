@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}قائمة الموظفين{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/employees.css' %}">
+{% endblock %}
+
+{% block content %}
+  <section class="employee-list">
+    <h1>قائمة الموظفين</h1>
+    <table class="task-table">
+      <thead>
+        <tr>
+          <th>الاسم الأول</th>
+          <th>الاسم الأخير</th>
+          <th>اسم المستخدم</th>
+          <th>البريد الإلكتروني</th>
+          <th>الدور</th> 
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for employee in employees %}
+          <tr>
+            <td>{{ employee.first_name }}</td>
+            <td>{{ employee.last_name }}</td>
+            <td>{{ employee.username }}</td>
+            <td>{{ employee.email }}</td>
+            <td>{{ employee.job_title }}</td>
+            <td>
+              {% if employee.groups.all.0.name == "Managers" %}
+                مدير
+              {% elif employee.groups.all.0.name == "Employees" %}
+                موظف
+              {% else %}
+                غير محدد
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="{% url 'delete_employee' employee.id %}" onsubmit="return confirm('هل أنت متأكد من الحذف؟');">
+                {% csrf_token %}
+                <button type="submit" class="delete-btn">حذف</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">لا يوجد موظفين.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

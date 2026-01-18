@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/task_details.css' %}">
+  <title>تفاصيل المهمة - نظام إدارة المهام</title>
+  <meta name="title" content="تفاصيل المهمة - نظام إدارة المهام">
+  <meta name="description" content="عرض وتحديث تفاصيل المهمة في نظام إدارة المهام, مع واجهة مستخدم سهلة الاستخدام تناسب المديرين والمصممين والموظفين.">
+{% endblock %}
+
+{% block content %}
+<div class="task-details-container">
+  <h2>📄 تفاصيل المهمة</h2>
+
+  <!-- تفاصيل عامة تظهر للمدير والموظف العادي فقط -->
+  {% if request.user.role != "designer" %}
+    <div class="detail-item">
+      <strong>[النوع]:</strong>
+      <p>{{ task.article_type_W_R_A_B|default:"-" }}</p>
+    </div>
+
+    <div class="detail-item">
+      <strong>عنوان المقال:</strong>
+      <p>{{ task.article_title }}</p>
+    </div>
+
+    <div class="form-group">
+        <label for="article_details">📝 تفاصيل المقال:</label>
+        <textarea name="article_detailss" id="article_details"  readonly >{{ task.article_details }}</textarea>
+      </div>
+
+    <div class="detail-item">
+      <strong>تاريخ النشر:</strong>
+      <p>{{ task.publish_date|default:"-" }}</p>
+    </div>
+
+    <hr>
+  {% endif %}
+
+  <!-- النموذج -->
+  <form method="post" class="task-form">
+    {% csrf_token %}
+
+    {% if request.user.role == "manager" %}
+      <!-- المدير يعدل كل الحقول -->
+      {% for field in form %}
+        <div class="form-group">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}
+            <small style="color: #6c757d;">{{ field.help_text }}</small>
+          {% endif %}
+          {% for error in field.errors %}
+            <div style="color: #e74a3b; margin-top: 5px;">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn">💾 حفظ التغييرات</button>
+
+    {% elif request.user.role == "designer" %}
+      <!-- المصمم يشوف الحقول المحددة فقط -->
+      <div class="detail-item">
+        <strong>الكاتب:</strong>
+        <p>{{ task.writer.get_full_name|default:task.writer.username }}</p>
+      </div>
+
+      <div class="detail-item">
+        <strong>البريد الالكترونب :</strong>
+        <p>{{ task.writer.email|default:task.writer.username }}</p>
+      </div>
+
+      <div class="detail-item">
+        <strong>موقع النشر:</strong>
+        <p>{{ task.publish_site|default:"-" }}</p>
+      </div>
+
+      <div class="detail-item">
+        <strong> عنوان الصورة :</strong>
+        <p>{{ task.image|default:"-" }}</p>
+      </div>
+
+      <div class="detail-item">
+        <strong> نوع الصورة :</strong>
+        <p>{{ task.image_type|default:"-" }}</p>
+      </div>
+
+
+
+      <div class="form-group">
+        <label for="image_details">📝 تفاصيل الصورة:</label>
+        <textarea name="image_details" id="image_details"  readonly >{{ task.image_details }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="image_status">حالة الصورة المطلوبة</label>
+        <select name="image_status" id="image_status">
+          {% for value, label in image_status %}
+            <option value="{{ value }}" {% if task.image_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" class="btn">💾 تحديث</button>
+
+    {% else %}
+      <!-- الموظف العادي يعدل الحقول المسموح بها فقط -->
+      <div class="form-group">
+        <label for="article_link">🔗 رابط المقال:</label>
+        <input type="text" name="article_link" id="article_link" value="{{ task.article_link }}">
+      </div>
+
+      <div class="form-group">
+        <label for="status">حالة المقال:</label>
+        <select name="status" id="status">
+          {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="alert alert-info">
+        اذا كنت تريد صور للمقال من المصمم، الملئ البيانات التالية:
+      </div>
+
+      <div class="form-group">
+        <label for="is_need_image">هل تحتاج الى صورة؟</label>
+        <select name="is_need_image" id="is_need_image">
+          {% for value, label in IS_NEED_IMAGE %}
+            <option value="{{ value }}" {% if task.is_need_image == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="image">🖼️ عنوان الصورة المطلوبة:</label>
+        <input type="text" name="image" id="image" value="{{ task.image }}">
+      </div>
+
+      <div class="form-group">
+        <label for="image_type">📌 حالة الصورة المطلوبة:</label>
+        <select name="image_type" id="image_type">
+          {% for value, label in image_type_choices %}
+            <option value="{{ value }}" {% if task.image_type == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="image_details">📝 تفاصيل الصورة:</label>
+        <textarea name="image_details" id="image_details">{{ task.image_details }}</textarea>
+      </div>
+
+      <button type="submit" class="btn">💾 تحديث</button>
+    {% endif %}
+  </form>
+
+  <hr>
+
+  <!-- الإجراءات -->
+  <div class="action-section">
+    <strong>الإجراءات:</strong>
+    <div class="action-links">
+      {% if request.user.role == "manager" %}
+        <a href="{% url 'edit_task' task.id %}" class="btn btn-secondary">✏️ تعديل المهمة</a>
+        <a href="{% url 'delete_task' task.id %}" class="btn btn-danger" onclick="return confirm('هل أنت متأكد أنك تريد حذف هذه المهمة؟');">🗑️ حذف المهمة</a>
+      {% else %}
+        <span style="color: #6c757d; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+          يمكنك تعديل الرابط والحقول أعلاه فقط
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <a class="back-link" onclick="window.close();">🔙 إغلاق النافذة</a>
+</div>
+{% endblock %}

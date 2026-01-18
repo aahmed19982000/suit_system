@@ -1,0 +1,60 @@
+<!-- includes/sidebar.html -->
+<aside class="sidebar">
+  <!-- زر القائمة المتنقلة -->
+  <button class="mobile-menu-toggle" id="mobileMenuToggle">
+      ☰ القائمة
+  </button>
+  
+  <!-- رأس الشريط الجانبي -->
+  <div class="sidebar-header">
+      <div class="store-name">فطاطري البركة</div>
+      <div class="store-branch">فرع وسط المدينة</div>
+  </div>
+  
+  <!-- القائمة الرئيسية -->
+  <nav class="sidebar-menu">
+      <div class="menu-title">القائمة الرئيسية</div>
+      <ul class="menu-items">
+          <li><a href="#" class="{% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">لوحة التحكم</a></li>
+          <li><a href="#">نقطة البيع</a></li>
+          <li><a href="#">الطلبات</a></li>
+          <li><a href="#">المخزون</a></li>
+          <li><a href="#">الإدارة</a></li>
+          <li><a href="#">الموظفين</a></li>
+          <li><a href="#">الإعدادات</a></li>
+      </ul>
+  </nav>
+  
+  <!-- قسم المستخدم -->
+  <div class="user-section">
+      <div class="user-avatar">
+          {% if user.is_authenticated %}
+              {{ user.first_name|first|upper }}
+          {% else %}
+              ز
+          {% endif %}
+      </div>
+      <div class="user-info">
+          <h4>
+              {% if user.is_authenticated %}
+                  {{ user.get_full_name|default:user.username }}
+              {% else %}
+                  زائر
+              {% endif %}
+          </h4>
+          <p>
+              {% if user.is_authenticated %}
+                  {% if user.is_superuser %}
+                      مدير نظام
+                  {% elif user.groups.all.0.name %}
+                      {{ user.groups.all.0.name }}
+                  {% else %}
+                      مستخدم
+                  {% endif %}
+              {% else %}
+                  غير مسجل
+              {% endif %}
+          </p>
+      </div>
+  </div>
+</aside>

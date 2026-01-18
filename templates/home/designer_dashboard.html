@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/employee_dashboard.css' %}">
+  <title>لوحة تحكم المصمم - نظام إدارة المهام</title>
+  <meta name="title" content="لوحة تحكم المصمم - نظام إدارة المهام">
+  <meta name="description" content="لوحة تحكم المصمم في نظام إدارة المهام. استعرض إحصائيات أدائك والمهام المطلوبة منك مع واجهة مستخدم سهلة الاستخدام.">
+{% endblock %}
+
+{% block content %}
+  <h1>👋 مرحبًا {{ request.user.get_full_name|default:request.user.username }}</h1>
+  <p>هذه لمحة سريعة عن أدائك والمهام المطلوبة اليوم</p>
+
+  <div class="stats">
+    <div class="stat-box">
+      <h2>{{ total_tasks }}</h2>
+      <p>عدد الصور</p>
+    </div>
+    <div class="stat-box">
+      <h2>{{ sent_tasks }}</h2>
+      <p>الصور المرسلة </p>
+    </div>
+    <div class="stat-box">
+      <h2>{{ in_progress_count }}</h2>
+      <p>الصور المتبقية</p>
+    </div>
+
+    <div class="stat-box">
+      <h2>{{ progress_percent }}%</h2>
+      <p>نسبة الإنجاز</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top: 40px;">الصور المطلوبة  يا {{ request.user.get_full_name|default:request.user.username }} من فضلك ركز وما تاخر الصور</h2>
+  {% if in_progress_tasks %}
+    <table class="task-table">
+      <thead>
+        <tr>
+          <th>✍️ الكاتب</th>
+          <th>📅 بريد الكاتب</th>
+          <th>📢 موقع النشر</th>
+          <th>🖼️ الصورة المطلوبة</th>
+          <th>📌 حالة الصورة</th>
+          <th>📝 تفاصيل الصورة</th>
+          <th>⚙️ المزيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in in_progress_tasks %}
+          {% if task.is_need_image == "YES" %}
+          <tr>
+            <td>{{ task.writer.get_full_name|default:task.writer.username }}</td>
+            <td>{{ task.writer.email|default:task.writer.username }}</td>
+            <td>{{ task.publish_site }}</td>
+            <td>{{ task.image|default:"-" }}</td>
+            <td>{{ task.get_image_type_display|default:"-" }}</td>
+            <td>{{ task.image_details|default:"-" }}</td>
+            <td>
+              <a href="{% url 'task_details' task.id %}" target="_blank" class="view-btn">👁️ عرض</a>
+            </td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>👌 لا توجد مهام مؤخرة</p>
+  {% endif %}
+{% endblock %}

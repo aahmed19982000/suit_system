@@ -1,0 +1,213 @@
+/* footer.css - تنسيق الفوتر الجانبي مطابق للصورة */
+/* ===== الفوتر الجانبي ===== */
+.side-footer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 260px;
+  background: linear-gradient(to bottom, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 0;
+  z-index: 1000;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+  box-shadow: -2px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+/* رأس الفوتر */
+.footer-header {
+  padding: 30px 20px 25px;
+  background-color: #0f3460;
+  text-align: center;
+  border-bottom: 2px solid #1a1a2e;
+}
+
+.store-name {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.store-branch {
+  font-size: 15px;
+  color: #a0a0c0;
+  font-weight: 500;
+  padding: 5px 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* القائمة الرئيسية */
+.footer-menu {
+  flex: 1;
+  padding: 25px 0;
+}
+
+.menu-title {
+  padding: 0 25px 15px;
+  font-size: 16px;
+  color: #8a8ab5;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.menu-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu-items li {
+  margin: 0;
+}
+
+.menu-items a {
+  display: block;
+  padding: 14px 25px;
+  color: #d1d1e9;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  font-size: 15.5px;
+  font-weight: 500;
+  border-right: 4px solid transparent;
+  position: relative;
+}
+
+.menu-items a:hover {
+  background-color: #2a2a4a;
+  color: #ffffff;
+  border-right: 4px solid #4cc9f0;
+  padding-right: 28px;
+}
+
+.menu-items a.active {
+  background-color: #2a2a4a;
+  color: #ffffff;
+  border-right: 4px solid #4cc9f0;
+  font-weight: 600;
+}
+
+/* قسم المستخدم */
+.user-section {
+  padding: 25px;
+  background-color: #0f3460;
+  border-top: 2px solid #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.user-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4cc9f0 0%, #4361ee 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.user-info h4 {
+  margin: 0 0 7px 0;
+  font-size: 17px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.user-info p {
+  margin: 0;
+  font-size: 14px;
+  color: #a0a0c0;
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+/* شريط التمرير */
+.side-footer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.side-footer::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+.side-footer::-webkit-scrollbar-thumb {
+  background: #4cc9f0;
+  border-radius: 3px;
+}
+
+.side-footer::-webkit-scrollbar-thumb:hover {
+  background: #4361ee;
+}
+
+/* زر القائمة المتنقلة للشاشات الصغيرة */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(to right, #0f3460, #1a1a2e);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  z-index: 1001;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: linear-gradient(to right, #1a1a2e, #0f3460);
+  transform: translateY(-2px);
+}
+
+/* تصميم متجاوب */
+@media (max-width: 992px) {
+  .side-footer {
+      transform: translateX(100%);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 280px;
+  }
+  
+  .side-footer.active {
+      transform: translateX(0);
+  }
+  
+  .mobile-menu-toggle {
+      display: block;
+  }
+  
+  .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(3px);
+      z-index: 999;
+  }
+  
+  .overlay.active {
+      display: block;
+  }
+}

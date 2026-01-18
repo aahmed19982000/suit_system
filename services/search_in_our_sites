@@ -1,0 +1,60 @@
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+from categories.models import Site
+
+def search_in_our_sites(keyword):
+    # جلب روابط السايت ماب من قاعدة البيانات
+    sitemap_urls = [site.sitemaps_links for site in Site.objects.all()]
+
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    reslist = []          # هنا نعرف القائمة مرة واحدة قبل اللوب
+    seen_links = set()    # لتجنب تكرار الروابط
+
+    try:
+        for sitemap in sitemap_urls:
+            read_sitemap = requests.get(sitemap, headers=headers, timeout=10)
+            print("Status:", read_sitemap.status_code)
+            
+            if read_sitemap.status_code != 200:
+                print(f"❌ الصفحة {sitemap} غير موجودة أو هناك مشكلة في الوصول.")
+                continue  # بدل return []
+
+            soup = BeautifulSoup(read_sitemap.text, "html.parser")
+
+            keyword_words = keyword.lower().split()
+            min_match = 1  # نبحث عن تطابق كلمة واحدة على الأقل
+
+            for link in soup.find_all("a"):
+                anchor_text = link.get_text(strip=True) or ""
+                href = link.get("href")
+                if not href:
+                    continue
+
+                full_href = urljoin(sitemap, href)  # ندمج الرابط الأساسي مع href
+
+                if full_href in seen_links:
+                    continue
+                seen_links.add(full_href)
+
+                anchor_words = anchor_text.lower().split()
+                match_count = sum(1 for word in keyword_words if word in anchor_words)
+
+                if match_count >= min_match:
+                    reslist.append((full_href, anchor_text, match_count))
+
+        # ترتيب النتائج حسب عدد الكلمات المطابقة (أعلى تطابق أولاً)
+        reslist.sort(key=lambda x: x[2], reverse=True)
+        return reslist
+
+    except requests.RequestException as e:
+        print("❌ حدث خطأ أثناء محاولة الوصول إلى الصفحة:", e)
+        return []
+
+# مثال للتشغيل
+kyword = "fxcc"
+results = search_in_our_sites(kyword)
+
+for url, text, score in results:
+    print(f"الرابط: {url}, النص: {text}, الدرجة: {score}")

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة الإجازات{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/holiday.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="holiday-container">
+    <h1>إدارة الإجازات</h1>
+
+    <!-- الإجازات الرسمية -->
+    <h2>الإجازات الرسمية</h2>
+    <table class="holiday-table">
+      <thead>
+        <tr>
+          <th>اسم الإجازة</th>
+          <th>تاريخ الإجازة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in official_holidays %}
+          <tr>
+            <td>{{ h.name }}</td>
+            <td>{{ h.date }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="2">لا توجد إجازات رسمية</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" class="holiday-form">
+      {% csrf_token %}
+      {{ official_form.as_p }}
+      <button type="submit" name="submit_official">إضافة إجازة رسمية</button>
+    </form>
+
+    <!-- الإجازات المخصصة -->
+    <h2>الإجازات المخصصة للموظفين</h2>
+    <table class="holiday-table">
+      <thead>
+        <tr>
+          <th>المستخدم</th>
+          <th>تاريخ الإجازة</th>
+          <th>السبب</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in custom_holidays %}
+          <tr>
+            <td>{{ h.user }}</td>
+            <td>{{ h.date }}</td>
+            <td>{{ h.reason }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">لا توجد إجازات مخصصة</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" class="holiday-form">
+      {% csrf_token %}
+      {{ custom_form.as_p }}
+      <button type="submit" name="submit_custom">إضافة إجازة مخصصة</button>
+    </form>
+  </div>
+{% endblock %}

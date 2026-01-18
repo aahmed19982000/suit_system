@@ -1,0 +1,200 @@
+/* إعدادات عامة */
+:root {
+    --primary-color: #e67e22; /* لون الفطائر الذهبي */
+    --secondary-color: #d35400;
+    --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    --card-bg: #ffffff;
+    --text-main: #2d3436;
+    --text-muted: #636e72;
+    --shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+* {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body.login-page {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: var(--bg-gradient);
+}
+
+.login-wrapper {
+    width: 100%;
+    max-width: 450px;
+    padding: 20px;
+}
+
+/* الكارت الرئيسي */
+.login-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+/* استبدال الصورة بتصميم هندسي احترافي */
+.card-header-img {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    padding: 40px 20px;
+    text-align: center;
+    position: relative;
+}
+
+/* إخفاء الصورة الأصلية لأننا نريد تصميم بدون صور */
+.card-header-img img {
+    display: none; 
+}
+
+.header-overlay h2 {
+    color: white;
+    margin: 0;
+    font-size: 1.8rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* جسم الكارت */
+.card-body {
+    padding: 30px;
+}
+
+.card-body h3 {
+    color: var(--text-main);
+    margin-bottom: 10px;
+    font-size: 1.4rem;
+    text-align: center;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* الرسائل والتنبيهات */
+.alert {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+.alert.error { background: #ffeef0; color: #d63031; border: 1px solid #fab1a0; }
+
+/* المدخلات */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    right: 15px;
+    color: var(--text-muted);
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding: 12px 45px 12px 15px;
+    border: 2px solid #eee;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.3s;
+    font-size: 1rem;
+}
+
+.input-wrapper input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(230, 126, 34, 0.1);
+}
+
+.toggle-password {
+    position: absolute;
+    left: 15px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* خيارات النموذج */
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    font-size: 0.85rem;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.forgot-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* زر الدخول */
+.btn-login {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(to left, var(--primary-color), var(--secondary-color));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.4);
+}
+
+.btn-login .login-icon {
+    transform: rotate(180deg); /* ليتناسب مع الاتجاه العربي */
+}
+
+/* التذييل */
+.card-footer {
+    padding: 20px;
+    text-align: center;
+    background: #fcfcfc;
+    border-top: 1px solid #eee;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* حركات أنيميشن */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

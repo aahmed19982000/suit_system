@@ -1,0 +1,564 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard_company.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.35.0/dist/apexcharts.css">
+<title>لوحة تحكم الشركات - نظام إدارة الشركات</title>
+<meta name="title" content="لوحة تحكم الشركات">
+<meta name="description" content="لوحة تحكم شاملة لإدارة وإحصاءات الشركات">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="fas fa-tachometer-alt"></i>
+                لوحة تحكم الشركات
+            </h1>
+            <p class="page-subtitle">نظرة عامة وإحصائيات شاملة عن جميع الشركات</p>
+        </div>
+        
+        <div class="header-actions">
+            <div class="date-info">
+                <i class="fas fa-calendar-alt"></i>
+                <span id="current-date"></span>
+            </div>
+            <a href="{% url 'company_list' %}" class="btn-view-all">
+                <i class="fas fa-list"></i>
+                عرض جميع الشركات
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+        <div class="stat-card primary">
+            <div class="stat-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_companies }}</h3>
+                <p class="stat-label">إجمالي الشركات</p>
+                <div class="stat-change">
+                    <i class="fas fa-chart-line"></i>
+                    <span>محدث الآن</span>
+                </div>
+            </div>
+            <div class="stat-chart" id="totalChart"></div>
+        </div>
+        
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ active_company }}</h3>
+                <p class="stat-label">شركات نشطة</p>
+                <div class="stat-change positive">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>{{ active_percentage }}% من الإجمالي</span>
+                </div>
+            </div>
+            <div class="stat-chart" id="activeChart"></div>
+        </div>
+        
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ expired_soon }}</h3>
+                <p class="stat-label">تنتهي قريباً</p>
+                <div class="stat-change warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>خلال 30 يوم</span>
+                </div>
+            </div>
+            <div class="stat-chart" id="soonChart"></div>
+        </div>
+        
+        <div class="stat-card danger">
+            <div class="stat-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ expired_company }}</h3>
+                <p class="stat-label">شركات منتهية</p>
+                <div class="stat-change negative">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>{{ expired_percentage }}% من الإجمالي</span>
+                </div>
+            </div>
+            <div class="stat-chart" id="expiredChart"></div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+        <!-- Left Column -->
+        <div class="dashboard-column">
+            <!-- Financial Overview -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        الإحصائيات المالية
+                    </h2>
+                    <div class="card-actions">
+                        <button class="btn-refresh" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="financial-summary">
+                        <div class="financial-item">
+                            <div class="financial-icon total">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div class="financial-content">
+                                <h3>إجمالي المبالغ المدفوعة</h3>
+                                <p class="financial-amount">
+                                    {{ total_amount_paid|floatformat:2 }} <small>ريال</small>
+                                </p>
+                                <div class="financial-progress">
+                                    <div class="progress-bar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="financial-item">
+                            <div class="financial-icon avg">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <div class="financial-content">
+                                <h3>متوسط المبلغ للشركة</h3>
+                                <p class="financial-amount">
+                                    {{ avg_amount_per_company|floatformat:2 }}
+                                    <small>ريال</small>
+                                </p>
+                                <div class="financial-progress">
+                                    <div class="progress-bar" style="width: 75%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="financial-distribution">
+                        <h4>معلومات إضافية</h4>
+                        <div class="additional-info">
+                            <div class="info-item">
+                                <i class="fas fa-file-contract"></i>
+                                <span>شركات بعقود: {{ companies_with_contract }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-calendar-times"></i>
+                                <span>بدون تاريخ انتهاء: {{ companies_without_end_date }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Company Status Chart -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-pie"></i>
+                        توزيع حالات الشركات
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="status-chart-container">
+                        <div class="chart-wrapper">
+                            <div id="statusChart"></div>
+                        </div>
+                        <div class="status-legend">
+                            <div class="legend-item active">
+                                <span class="legend-color"></span>
+                                <span class="legend-text">نشطة ({{ active_company }})</span>
+                                <span class="legend-percentage">
+                                    {{ active_percentage }}%
+                                </span>
+                            </div>
+                            <div class="legend-item soon">
+                                <span class="legend-color"></span>
+                                <span class="legend-text">تنتهي قريباً ({{ expired_soon }})</span>
+                                <span class="legend-percentage">
+                                    {{ expired_soon_percentage }}%
+                                </span>
+                            </div>
+                            <div class="legend-item expired">
+                                <span class="legend-color"></span>
+                                <span class="legend-text">منتهية ({{ expired_company }})</span>
+                                <span class="legend-percentage">
+                                    {{ expired_percentage }}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="dashboard-column">
+            <!-- Recent Activity -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-history"></i>
+                        أحدث الشركات
+                    </h2>
+                    <a href="{% url 'company_list' %}" class="btn-view-more">
+                        عرض المزيد
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="activity-list">
+                        {% if recent_companies %}
+                            {% for company in recent_companies %}
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    {% if company.end_date %}
+                                        {% if company.end_date < today %}
+                                        <i class="fas fa-exclamation-circle expired"></i>
+                                        {% elif company.end_date <= next_30_days %}
+                                        <i class="fas fa-clock warning"></i>
+                                        {% else %}
+                                        <i class="fas fa-check-circle success"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="fas fa-question-circle info"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="activity-content">
+                                    <h4>{{ company.name }}</h4>
+                                    <p class="activity-meta">
+                                        <span class="activity-date">
+                                            <i class="far fa-calendar"></i>
+                                            {{ company.created_at|date:"Y/m/d" }}
+                                        </span>
+                                        <span class="activity-amount">
+                                            <i class="fas fa-money-bill"></i>
+                                            {{ company.amount_paid|default:0|floatformat:2 }} ريال
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="activity-status">
+                                    {% if company.end_date %}
+                                        {% if company.end_date < today %}
+                                        <span class="badge expired">منتهي</span>
+                                        {% elif company.end_date <= next_30_days %}
+                                        <span class="badge warning">قريباً</span>
+                                        {% else %}
+                                        <span class="badge success">نشط</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge info">بدون تاريخ</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-activity">
+                                <i class="fas fa-building"></i>
+                                <p>لا توجد شركات مسجلة بعد</p>
+                                <a href="{% url 'add_company' %}" class="btn-add-first">
+                                    <i class="fas fa-plus"></i>
+                                    إضافة أول شركة
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-bolt"></i>
+                        إجراءات سريعة
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions-grid">
+                        <a href="{% url 'add_company' %}" class="quick-action-item add">
+                            <div class="action-icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="action-content">
+                                <h4>إضافة شركة</h4>
+                                <p>إنشاء شركة جديدة</p>
+                            </div>
+                            <i class="fas fa-arrow-left action-arrow"></i>
+                        </a>
+                        
+                        <a href="{% url 'company_list' %}" class="quick-action-item list">
+                            <div class="action-icon">
+                                <i class="fas fa-list-ul"></i>
+                            </div>
+                            <div class="action-content">
+                                <h4>عرض القائمة</h4>
+                                <p>جميع الشركات</p>
+                            </div>
+                            <i class="fas fa-arrow-left action-arrow"></i>
+                        </a>
+                        
+                        <a href="{% url 'company_list' %}?status=active" class="quick-action-item filter">
+                            <div class="action-icon">
+                                <i class="fas fa-filter"></i>
+                            </div>
+                            <div class="action-content">
+                                <h4>الشركات النشطة</h4>
+                                <p>عقود سارية</p>
+                            </div>
+                            <i class="fas fa-arrow-left action-arrow"></i>
+                        </a>
+                        
+                        <a href="{% url 'company_list' %}?status=expired" class="quick-action-item alert">
+                            <div class="action-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="action-content">
+                                <h4>المنتهية</h4>
+                                <p>بحاجة لتجديد</p>
+                            </div>
+                            <i class="fas fa-arrow-left action-arrow"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Summary -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-bar"></i>
+                        ملخص الإحصائيات
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-summary">
+                        <div class="summary-item">
+                            <div class="summary-label">معدل النشاط</div>
+                            <div class="summary-value">
+                                {{ active_percentage }}%
+                            </div>
+                            <div class="summary-progress">
+                                <div class="progress" style="width: {{ active_percentage }}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-item">
+                            <div class="summary-label">معدل الانتهاء قريباً</div>
+                            <div class="summary-value">
+                                {{ expired_soon_percentage }}%
+                            </div>
+                            <div class="summary-progress">
+                                <div class="progress warning" style="width: {{ expired_soon_percentage }}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-item">
+                            <div class="summary-label">الشركات بدون تاريخ</div>
+                            <div class="summary-value">
+                                {{ companies_without_end_date }}
+                            </div>
+                            <div class="summary-progress">
+                                <div class="progress info" style="width: {% if total_companies > 0 %}{{ companies_without_end_date|floatformat:0 }}{% else %}0{% endif %}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Stats -->
+    <div class="dashboard-footer">
+        <div class="footer-stats">
+            <div class="footer-stat">
+                <i class="fas fa-clock"></i>
+                <div class="footer-stat-content">
+                    <h4>آخر تحديث</h4>
+                    <p id="last-updated">الآن</p>
+                </div>
+            </div>
+            
+            <div class="footer-stat">
+                <i class="fas fa-database"></i>
+                <div class="footer-stat-content">
+                    <h4>إجمالي السجلات</h4>
+                    <p>{{ total_companies }} شركة</p>
+                </div>
+            </div>
+            
+            <div class="footer-stat">
+                <i class="fas fa-chart-line"></i>
+                <div class="footer-stat-content">
+                    <h4>نسبة النمو</h4>
+                    <p>+{{ growth_rate }}%</p>
+                </div>
+            </div>
+            
+            <div class="footer-stat">
+                <i class="fas fa-file-contract"></i>
+                <div class="footer-stat-content">
+                    <h4>شركات بعقود</h4>
+                    <p>{{ companies_with_contract }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p>جاري تحديث البيانات...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+// التاريخ الحالي
+document.getElementById('current-date').textContent = new Date().toLocaleDateString('ar-SA', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+});
+
+// Charts Data
+const statusData = {
+    series: [{{ active_company }}, {{ expired_soon }}, {{ expired_company }}],
+    labels: ['نشطة', 'تنتهي قريباً', 'منتهية'],
+    colors: ['#4CAF50', '#FF9800', '#F44336']
+};
+
+// Initialize Charts
+document.addEventListener('DOMContentLoaded', function() {
+    // Status Chart
+    const statusChart = new ApexCharts(document.querySelector("#statusChart"), {
+        series: statusData.series,
+        chart: {
+            type: 'donut',
+            height: 300,
+        },
+        colors: statusData.colors,
+        labels: statusData.labels,
+        legend: {
+            show: false
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '65%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'الشركات',
+                            color: '#333',
+                            fontSize: '16px'
+                        }
+                    }
+                }
+            }
+        },
+        responsive: [{
+            breakpoint: 480,
+            options: {
+                chart: {
+                    width: 200
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }]
+    });
+    
+    statusChart.render();
+    
+    // Mini charts for stats
+    const statValues = [100, {{ active_percentage }}, {{ expired_soon_percentage }}, {{ expired_percentage }}];
+    document.querySelectorAll('.stat-chart').forEach((chartElement, index) => {
+        const chart = new ApexCharts(chartElement, {
+            series: [statValues[index]],
+            chart: {
+                type: 'radialBar',
+                height: 50,
+                width: 50,
+                sparkline: {
+                    enabled: true
+                }
+            },
+            plotOptions: {
+                radialBar: {
+                    hollow: {
+                        size: '50%'
+                    },
+                    track: {
+                        background: 'rgba(255,255,255,0.2)'
+                    },
+                    dataLabels: {
+                        show: false
+                    }
+                }
+            },
+            colors: ['#FFFFFF'],
+            stroke: {
+                lineCap: 'round'
+            }
+        });
+        
+        chart.render();
+    });
+});
+
+// Refresh Data
+function refreshData() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        location.reload();
+    }, 1000);
+}
+
+// Auto-refresh every 5 minutes
+setInterval(() => {
+    document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('ar-SA');
+}, 300000);
+
+// Animation on scroll
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('animate-in');
+        }
+    });
+}, observerOptions);
+
+document.querySelectorAll('.stat-card, .dashboard-card').forEach(card => {
+    observer.observe(card);
+});
+</script>
+{% endblock %}

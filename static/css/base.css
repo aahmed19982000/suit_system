@@ -1,0 +1,96 @@
+/* base.css - التنسيقات الأساسية */
+/* ===== نظام الرسائل ===== */
+.system-messages {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  right: 300px;
+  z-index: 9999;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.message {
+  background: white;
+  border-radius: 8px;
+  padding: 15px 20px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-right: 4px solid #4CAF50;
+}
+
+.message.success {
+  border-right-color: #4CAF50;
+}
+
+.message.error {
+  border-right-color: #f44336;
+}
+
+.message.warning {
+  border-right-color: #ff9800;
+}
+
+.message.info {
+  border-right-color: #2196f3;
+}
+
+.message-text {
+  flex: 1;
+  color: #333;
+  font-weight: 500;
+}
+
+.close {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 10px;
+  line-height: 1;
+}
+
+.close:hover {
+  color: #333;
+}
+
+/* ===== المحتوى الرئيسي ===== */
+.main-content {
+  padding: 30px;
+  min-height: calc(100vh - 40px);
+}
+
+@media (max-width: 768px) {
+  .system-messages {
+      left: 15px;
+      right: 15px;
+      top: 10px;
+      max-width: none;
+  }
+  
+  .main-content {
+      padding: 20px 15px;
+  }
+}
+
+/* ===== طبقة التعتيم ===== */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  z-index: 998;
+}
+
+.overlay.active {
+  display: block;
+}

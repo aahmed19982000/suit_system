@@ -1,0 +1,115 @@
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="brand-info">
+            <h2 class="store-name">فطاطري عباد الرحمان</h2>
+            <p class="store-branch">فرع طهطا</p>
+        </div>
+        <div class="brand-logo">
+            <div class="logo-circle">🍴</div>
+        </div>
+    </div>
+
+    <nav class="sidebar-menu">
+        <div class="menu-section">
+            <h3 class="menu-title">القائمة الرئيسية</h3>
+            <ul class="menu-items">
+                <li>
+                    <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">
+                        <span class="icon">⊞</span>
+                        <span class="text">لوحة التحكم</span>
+                    </a>
+                </li>
+               
+                <li>
+                    <a href="{% url 'pos_page' %}" class="{% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+                        <span class="icon">📋</span>
+                        <span class="text">انشاء طلب</span>
+                    </a>
+                </li>
+                <li>
+                
+                    <a href="{% url 'menu_management' %}" class="{% if request.resolver_match.url_name == 'menu_management' %}active{% endif %}">
+                        <span class="icon">🍽️</span>
+                        <span class="text">إدارة القائمة</span>
+                    <a href="{% url 'inventory_management' %} " class="{% if request.resolver_match.url_name == 'inventory' %}active{% endif %}">
+                        <span class="icon">📦</span>
+                        <span class="text">المخزون</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'sales_reports' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
+                        <span class="icon">📊</span>
+                        <span class="text">تقارير المبيعات</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'customer_management' %}" class="{% if request.resolver_match.url_name == 'customer_management' %}active{% endif %}">
+                        <span class="icon">👥</span>
+                        <span class="text">إدارة العملاء</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'orders' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
+                        <span class="icon"></span>
+                        <span class="text">كل المبيعات </span>
+                    </a>
+                </li>
+                <li>
+            </ul>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="menu-title">الإدارة</h3>
+            <ul class="menu-items">
+                <li>
+                    <a href="{%url 'employees_management' %}" class="{% if request.resolver_match.url_name == 'employees' %}active{% endif %}">
+                        <span class="icon">👥</span>
+                        <span class="text">الموظفين</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                        <span class="icon">⚙️</span>
+                        <span class="text">الإعدادات</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="user-section">
+        <div class="user-info-wrapper">
+            <div class="user-avatar">
+                {% if user.is_authenticated %}
+                    <span class="avatar-letter">{{ user.first_name|first|upper }}</span>
+                {% else %}
+                    <span class="avatar-letter">ز</span>
+                {% endif %}
+            </div>
+            <div class="user-details">
+                <h4 class="user-name">
+                    {% if user.is_authenticated %}
+                        {{ user.get_full_name|default:user.username }}
+                    {% else %}
+                        زائر
+                    {% endif %}
+                </h4>
+                <p class="user-role">
+                    {% if user.is_authenticated %}
+                        {% if user.is_superuser %}مدير نظام{% else %}كاشير - مسائي{% endif %}
+                    {% else %}
+                        غير مسجل
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="logout-btn" title="تسجيل الخروج">
+                <span class="logout-icon">↪</span>
+            </button>
+        </form>
+        
+    </div>
+</aside>

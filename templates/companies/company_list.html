@@ -1,0 +1,553 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/company_list.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<title>قائمة الشركات - نظام إدارة الشركات</title>
+<meta name="title" content="قائمة الشركات - نظام إدارة الشركات">
+<meta name="description" content="استعرض وقم بإدارة جميع الشركات في نظام إدارة الشركات.">
+{% endblock %}
+
+{% block content %}
+<div class="company-container">
+  <!-- Header Section -->
+  <div class="header-section">
+    <h1 class="page-title">🏢 قائمة الشركات</h1>
+    <div class="header-actions">
+      <a href="{% url 'add_company' %}" class="btn btn-primary btn-add">
+        <i class="fas fa-plus-circle"></i>
+        إضافة شركة جديدة
+      </a>
+    </div>
+  </div>
+
+  <!-- Messages Section -->
+  {% if messages %}
+  <div class="messages-section">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+      {{ message }}
+      <button type="button" class="close-alert">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Search and Filter Section -->
+  <div class="search-section">
+    <form method="get" class="search-form">
+      <div class="search-input-group">
+        <input 
+          type="text" 
+          name="search" 
+          placeholder="البحث عن شركة..." 
+          value="{{ search_query }}"
+          class="search-input"
+        >
+        <button type="submit" class="btn-search">
+          <i class="fas fa-search"></i>
+        </button>
+      </div>
+      <div class="filter-options">
+        <select name="sort" class="filter-select" onchange="this.form.submit()">
+          <option value="">ترتيب حسب</option>
+          <option value="name" {% if request.GET.sort == 'name' %}selected{% endif %}>الاسم</option>
+          <option value="date" {% if request.GET.sort == 'date' %}selected{% endif %}>التاريخ</option>
+          <option value="amount" {% if request.GET.sort == 'amount' %}selected{% endif %}>المبلغ</option>
+        </select>
+        <a href="{% url 'company_list' %}" class="btn-reset">
+          <i class="fas fa-redo"></i>
+          إعادة تعيين
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filters-header">
+      <h3><i class="fas fa-filter"></i> تصفية الشركات</h3>
+      <button type="button" class="btn-clear-filters" onclick="clearFilters()">
+        <i class="fas fa-times"></i> مسح الفلاتر
+      </button>
+    </div>
+    
+    <form method="get" class="filters-form">
+      <div class="filter-row">
+        <!-- فلتر حسب حالة العقد -->
+        <div class="filter-group">
+          <label for="status_filter"><i class="fas fa-check-circle"></i> حالة العقد:</label>
+          <select name="status" id="status_filter" class="filter-select" onchange="this.form.submit()">
+            <option value="">جميع الحالات</option>
+            <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>نشط</option>
+            <option value="expired" {% if request.GET.status == 'expired' %}selected{% endif %}>منتهي</option>
+            <option value="expiring_soon" {% if request.GET.status == 'expiring_soon' %}selected{% endif %}>ينتهي قريباً</option>
+            <option value="no_date" {% if request.GET.status == 'no_date' %}selected{% endif %}>بدون تاريخ</option>
+          </select>
+        </div>
+        
+        <!-- فلتر حسب مدة العقد -->
+        <div class="filter-group">
+          <label for="duration_filter"><i class="fas fa-clock"></i> مدة العقد:</label>
+          <select name="duration" id="duration_filter" class="filter-select" onchange="this.form.submit()">
+            <option value="">جميع المدد</option>
+            {% for duration in durations %}
+            <option value="{{ duration.id }}" {% if request.GET.duration == duration.id|stringformat:"s" %}selected{% endif %}>
+              {{ duration.duration }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <!-- فلتر حسب الموقع -->
+        <div class="filter-group">
+          <label for="site_filter"><i class="fas fa-globe"></i> الموقع:</label>
+          <select name="site" id="site_filter" class="filter-select" onchange="this.form.submit()">
+            <option value="">جميع المواقع</option>
+            {% for site in sites %}
+            <option value="{{ site.id }}" {% if request.GET.site == site.id|stringformat:"s" %}selected{% endif %}>
+              {{ site.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      
+      <div class="filter-row">
+        <!-- فلتر حسب نطاق التاريخ -->
+        <div class="filter-group">
+          <label for="date_from"><i class="fas fa-calendar"></i> من تاريخ:</label>
+          <input type="date" name="date_from" id="date_from" 
+                value="{{ request.GET.date_from }}"
+                class="filter-input"
+                onchange="this.form.submit()">
+        </div>
+        
+        <div class="filter-group">
+          <label for="date_to">إلى تاريخ:</label>
+          <input type="date" name="date_to" id="date_to" 
+                value="{{ request.GET.date_to }}"
+                class="filter-input"
+                onchange="this.form.submit()">
+        </div>
+        
+        <!-- فلتر حسب المبلغ -->
+        <div class="filter-group">
+          <label for="amount_min"><i class="fas fa-money-bill"></i> المبلغ من:</label>
+          <input type="number" name="amount_min" id="amount_min" 
+                placeholder="0" min="0"
+                value="{{ request.GET.amount_min }}"
+                class="filter-input">
+        </div>
+        
+        <div class="filter-group">
+          <label for="amount_max">إلى:</label>
+          <input type="number" name="amount_max" id="amount_max" 
+                placeholder="10000" min="0"
+                value="{{ request.GET.amount_max }}"
+                class="filter-input">
+        </div>
+        
+        <!-- زر تطبيق الفلترات -->
+        <div class="filter-group">
+          <button type="submit" class="btn-apply-filters">
+            <i class="fas fa-filter"></i> تطبيق الفلاتر
+          </button>
+        </div>
+      </div>
+    </form>
+    
+    <!-- عرض الفلترات النشطة -->
+    {% if has_filters %}
+    <div class="active-filters">
+      <h4><i class="fas fa-sliders-h"></i> الفلاتر النشطة:</h4>
+      <div class="filter-tags">
+        {% if request.GET.status %}
+        <span class="filter-tag">
+          حالة: 
+          {% if request.GET.status == 'active' %}نشط
+          {% elif request.GET.status == 'expired' %}منتهي
+          {% elif request.GET.status == 'expiring_soon' %}ينتهي قريباً
+          {% elif request.GET.status == 'no_date' %}بدون تاريخ
+          {% else %}{{ request.GET.status }}
+          {% endif %}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'status' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+        
+        {% if request.GET.duration and selected_duration %}
+        <span class="filter-tag">
+          مدة: {{ selected_duration.duration }}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'duration' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+        
+        {% if request.GET.site %}
+        <span class="filter-tag">
+          موقع: 
+          {% for site_obj in sites %}
+            {% if site_obj.id|stringformat:"s" == request.GET.site %}
+              {{ site_obj.name }}
+            {% endif %}
+          {% endfor %}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'site' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+        
+        {% if request.GET.date_from %}
+        <span class="filter-tag">
+          من تاريخ: {{ request.GET.date_from }}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'date_from' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+        
+        {% if request.GET.date_to %}
+        <span class="filter-tag">
+          إلى تاريخ: {{ request.GET.date_to }}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'date_to' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+        
+        {% if request.GET.amount_min %}
+        <span class="filter-tag">
+          مبلغ من: {{ request.GET.amount_min }}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'amount_min' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+        
+        {% if request.GET.amount_max %}
+        <span class="filter-tag">
+          مبلغ إلى: {{ request.GET.amount_max }}
+          <a href="?{% for key, value in request.GET.items %}{% if key != 'amount_max' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}" 
+            class="remove-filter">&times;</a>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-building"></i>
+      </div>
+      <div class="stat-content">
+        <h3 class="stat-number">{{ companies.count }}</h3>
+        <p class="stat-label">إجمالي الشركات</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-money-bill-wave"></i>
+      </div>
+      <div class="stat-content">
+        <h3 class="stat-number">{{ total_amount|default:"0" }} دولار</h3>
+        <p class="stat-label">إجمالي المبالغ</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-content">
+        <h3 class="stat-number">{{ active_companies|default:"0" }}</h3>
+        <p class="stat-label">العقود النشطة</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-calendar-times"></i>
+      </div>
+      <div class="stat-content">
+        <h3 class="stat-number">{{ expire_soon|default:"0" }}</h3>
+        <p class="stat-label">تنتهي قريبا </p>
+      </div>
+</div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-calendar-times"></i>
+      </div>
+      <div class="stat-content">
+        <h3 class="stat-number">{{ expiered_companies|default:"0" }}</h3>
+        <p class="stat-label">متنتهيه </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Companies Table -->
+  <div class="table-container">
+    <div class="table-header">
+      <h2 class="table-title">الشركات المسجلة</h2>
+      <div class="table-actions">
+        <button class="btn-export" onclick="exportCompanies()">
+          <i class="fas fa-download"></i>
+          تصدير
+        </button>
+        <button class="btn-print" onclick="window.print()">
+          <i class="fas fa-print"></i>
+          طباعة
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="companies-table">
+        <thead>
+          <tr>
+            <th>
+              <input type="checkbox" class="select-all" onclick="toggleSelectAll(this)">
+            </th>
+            <th>اسم الشركة</th>
+            <th>البريد الإلكتروني</th>
+            <th>الموقع</th>
+            <th>تاريخ الإضافة</th>
+            <th>تاريخ الانتهاء</th>
+            <th>مدة العقد</th>
+            <th>المبلغ المدفوع</th>
+            <th>الإجراءات</th>
+            <th>عرض التفاصيل</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for company in companies %}
+          <tr class="company-row">
+            <td>
+              <input type="checkbox" class="select-item" data-id="{{ company.id }}">
+            </td>
+            <td class="company-info">
+              <div class="company-avatar">
+                {{ company.name|slice:"0:1" }}
+              </div>
+              <div class="company-details">
+                <h4 class="company-name">{{ company.name }}</h4>
+                <span class="company-id">#{{ company.id }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="email-cell">
+                <i class="fas fa-envelope"></i>
+                {% if company.email %}
+                <a href="mailto:{{ company.email }}" class="email-link">{{ company.email }}</a>
+                {% else %}
+                <span class="no-data">-</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              {% if company.website %}
+              <div class="website-cell">
+                <i class="fas fa-globe"></i>
+                <a href="{{ company.website }}" target="_blank" class="website-link">
+                  {{ company.website|truncatechars:15 }}
+                </a>
+              </div>
+              {% else %}
+              <span class="no-website">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="date-cell">
+                <i class="fas fa-calendar-plus"></i>
+                <span>{{ company.created_at|date:"Y/m/d" }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="date-cell {% if company.is_expired %}expired{% endif %}">
+                <i class="fas fa-calendar-times"></i>
+                <span>
+                  {% if company.end_date %}
+                    {{ company.end_date|date:"Y/m/d" }}
+                  {% else %}
+                    <span class="no-date">-</span>
+                  {% endif %}
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="contract-duration">
+                {% if company.contract_duration %}
+                  {{ company.contract_duration.duration }} <!-- أضفت .duration هنا -->
+                {% else %}
+                  <span class="no-duration">-</span>
+                {% endif %}
+              </span>
+            </td>
+            <td>
+              <div class="amount-cell">
+                <span class="amount-value">{{ company.amount_paid|default:"0" }} دولار</span>
+              </div>
+            </td>
+            <td>
+              <div class="actions-cell">
+                <a href="{% url 'company_edit' company.id %}" class="btn-action btn-edit" title="تعديل">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <button 
+                  class="btn-action btn-delete" 
+                  title="حذف"
+                  onclick="showDeleteModal('{{ company.id }}', '{{ company.name }}')"
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+            <td>
+              <div class="details-cell">
+                <a href="{% url 'company_details' company.id %}" class="btn-details" title="عرض التفاصيل">
+                  <i class="fas fa-eye"></i>
+                  <span>عرض</span>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="empty-row">
+            <td colspan="10"> <!-- عدلت من 9 إلى 10 -->
+              <div class="empty-state">
+                <div class="empty-icon">
+                  <i class="fas fa-building"></i>
+                </div>
+                <h3>لا توجد شركات</h3>
+                <p>لم يتم إضافة أي شركات بعد. يمكنك إضافة شركة جديدة باستخدام الزر بالأعلى.</p>
+                <a href="{% url 'add_company' %}" class="btn btn-primary">
+                  <i class="fas fa-plus-circle"></i>
+                  إضافة أول شركة
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">تأكيد الحذف</h3>
+        <button type="button" class="btn-close" onclick="hideDeleteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="warning-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <p class="warning-text" id="deleteMessage"></p>
+        <p class="warning-note">
+          ⚠️ هذا الإجراء لا يمكن التراجع عنه
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="hideDeleteModal()">
+          <i class="fas fa-times"></i>
+          إلغاء
+        </button>
+        <form method="POST" id="deleteForm" class="delete-form">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-check"></i>
+            تأكيد الحذف
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/companies.js' %}"></script>
+<script>
+  // مسح جميع الفلترات
+  function clearFilters() {
+    window.location.href = "{% url 'company_list' %}";
+  }
+
+  // Toggle add company form
+  function toggleAddForm() {
+    const form = document.getElementById('addCompanyForm');
+    const toggleIcon = document.querySelector('.toggle-icon');
+    
+    if (form.style.display === 'none') {
+      form.style.display = 'block';
+      toggleIcon.classList.remove('fa-chevron-down');
+      toggleIcon.classList.add('fa-chevron-up');
+    } else {
+      form.style.display = 'none';
+      toggleIcon.classList.remove('fa-chevron-up');
+      toggleIcon.classList.add('fa-chevron-down');
+    }
+  }
+
+  // Show delete confirmation modal
+  function showDeleteModal(companyId, companyName) {
+    const modal = document.getElementById('deleteModal');
+    const message = document.getElementById('deleteMessage');
+    const form = document.getElementById('deleteForm');
+    
+    message.innerHTML = `هل أنت متأكد من حذف شركة <strong>"${companyName}"</strong>؟`;
+    form.action = `/companies/${companyId}/delete/`;
+    modal.style.display = 'flex';
+  }
+
+  // Hide delete modal
+  function hideDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+  }
+
+  // Toggle select all checkboxes
+  function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.select-item');
+    checkboxes.forEach(cb => {
+      cb.checked = checkbox.checked;
+    });
+  }
+
+  // Export selected companies
+  function exportCompanies() {
+    const selected = [];
+    document.querySelectorAll('.select-item:checked').forEach(checkbox => {
+      selected.push(checkbox.dataset.id);
+    });
+    
+    if (selected.length > 0) {
+      alert(`سيتم تصدير ${selected.length} شركة`);
+      // Implement actual export logic here
+    } else {
+      alert('يرجى اختيار شركات للتصدير');
+    }
+  }
+
+  // Close alert messages
+  document.querySelectorAll('.close-alert').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.parentElement.style.display = 'none';
+    });
+  });
+
+  // Auto-hide alerts after 5 seconds
+  setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(alert => {
+      alert.style.display = 'none';
+    });
+  }, 5000);
+
+  // Close modal when clicking outside
+  document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      hideDeleteModal();
+    }
+  });
+</script>
+{% endblock %}
