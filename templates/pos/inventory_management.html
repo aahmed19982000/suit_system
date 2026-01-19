@@ -84,7 +84,6 @@
         </table>
     </div>
 </div>
-
 <div id="addItemModal" class="luxury-modal-overlay">
     <div class="modal-card large-card">
         <div class="modal-header-with-icon">
@@ -149,6 +148,26 @@
                 <input name="unit_cost" type="number" step="0.01" required value="0" class="form-input-luxury">
             </div>
 
+            <div class="full-row finance-summary-section" style="background: rgba(212, 175, 55, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(212, 175, 55, 0.3); margin-top: 15px;">
+                <h4 style="color: #d4af37; margin-bottom: 12px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                    ملخص الفاتورة والدفع
+                </h4>
+                <div class="luxury-form-grid">
+                    <div class="half-row">
+                        <label class="form-label">إجمالي المستحق للمورد</label>
+                        <input type="text" id="calc_total_display" class="form-input-luxury" readonly value="0.00" 
+                               style="background: #111; color: #d4af37; font-weight: bold; border-color: rgba(212, 175, 55, 0.2);">
+                    </div>
+                    <div class="half-row">
+                        <label class="form-label">المبلغ الذي تم دفعه فعلياً</label>
+                        <input type="number" step="0.01" name="paid_amount" id="paid_amount_input" class="form-input-luxury" 
+                               placeholder="اتركه كما هو للدفع الكامل" style="border-color: #27ae60;">
+                        <small id="debt_hint" style="color: #ff4757; display: none; margin-top: 6px; font-weight: 600; font-size: 0.8rem;"></small>
+                    </div>
+                </div>
+            </div>
+
             <div class="modal-footer-actions full-row">
                 <button type="submit" class="btn-primary-luxury full-width">حفظ وتسجيل الحركة المالية</button>
                 <button type="button" onclick="closeModal('addItemModal')" class="btn-secondary-luxury">إلغاء</button>
@@ -176,14 +195,12 @@
             .then(res => res.json())
             .then(data => {
                 if (data.found) {
-                    // مورد موجود
                     select.value = data.id;
                     newFields.classList.add('hidden-field');
                     phoneInput.classList.add('search-success');
                     phoneInput.classList.remove('search-new');
                     alert('تم ربط المورد: ' + data.name);
                 } else {
-                    // مورد جديد
                     select.value = "";
                     newFields.classList.remove('hidden-field');
                     phoneInput.classList.add('search-new');
@@ -194,6 +211,54 @@
             })
             .catch(err => alert('خطأ في الاتصال بالبيانات'));
     }
+
+    // --- الجزء المضاف لحساب المبالغ والديون ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const qtyInput = document.querySelector('input[name="quantity"]');
+        const costInput = document.querySelector('input[name="supply_cost"]');
+        const totalDisplay = document.getElementById('calc_total_display');
+        const paidInput = document.getElementById('paid_amount_input');
+        const debtHint = document.getElementById('debt_hint');
+
+        function updateFinance() {
+            const qty = parseFloat(qtyInput.value) || 0;
+            const cost = parseFloat(costInput.value) || 0;
+            const total = (qty * cost).toFixed(2);
+            
+            if(totalDisplay) totalDisplay.value = total;
+            
+            // تحديث "المبلغ المدفوع" تلقائياً ليكون مساوياً للإجمالي عند تغيير الكمية أو السعر
+            // (إلا إذا قام المستخدم بتعديل حقل المدفوع يدوياً بالفعل)
+            if(paidInput && (!paidInput.dataset.userEdited)) {
+                paidInput.value = total;
+            }
+            checkDebt();
+        }
+
+        function checkDebt() {
+            const total = parseFloat(totalDisplay?.value) || 0;
+            const paid = parseFloat(paidInput?.value) || 0;
+            
+            if (debtHint) {
+                if (paid < total) {
+                    debtHint.style.display = 'block';
+                    debtHint.innerText = `المتبقي دين للمورد: ${(total - paid).toFixed(2)} ج.م`;
+                } else {
+                    debtHint.style.display = 'none';
+                }
+            }
+        }
+
+        // مراقبة المدخلات
+        qtyInput?.addEventListener('input', updateFinance);
+        costInput?.addEventListener('input', updateFinance);
+        
+        paidInput?.addEventListener('input', function() {
+            this.dataset.userEdited = "true"; // وضع علامة أن المستخدم عدل القيمة يدوياً
+            checkDebt();
+        });
+    });
+    // --- نهاية الجزء المضاف ---
 
     // البحث السريع في الجدول
     document.getElementById('inventorySearch')?.addEventListener('input', function(e) {

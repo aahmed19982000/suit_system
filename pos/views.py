@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator
 
+
 # Create your views here.
 
 
@@ -197,44 +198,57 @@ def add_inventory_item(request):
         sup_phone = request.POST.get('supplier_phone_input')
         new_sup_name = request.POST.get('new_supplier_name')
 
-        # 2. منطق تسجيل المورد الجديد (تم تغيير الحقل هنا إلى mobil)
+        # 2. تسجيل المورد الجديد إذا لم يكن موجوداً
         if not supplier_id and sup_phone and new_sup_name:
             supplier_obj, created = Supplier.objects.get_or_create(
-                mobil=sup_phone, # تم التصحيح هنا من phone إلى mobil
+                mobil=sup_phone,
                 defaults={'name': new_sup_name}
             )
             supplier_id = supplier_obj.id
 
-        # 3. إنشاء الصنف في المخزن
+        # 3. جلب القيم العددية مع التحقق منها
+        quantity = Decimal(request.POST.get('quantity', 0))
+        supply_cost = Decimal(request.POST.get('supply_cost', 0))
+        total_amount = quantity * supply_cost
+        
+        # جلب المبلغ المدفوع من الفورم (سأقوم بإضافته في الـ HTML أدناه)
+        # إذا لم يدخل المستخدم شيئاً، نفترض أنه دفع 0 (دين كامل)
+        paid_amount = Decimal(request.POST.get('paid_amount') or 0)
+        remaining_amount = total_amount - paid_amount
+
+        # 4. إنشاء الصنف في المخزن
         item = InventoryItem.objects.create(
             name=request.POST.get('name'),
             category_id=request.POST.get('category'),
             unit_id=request.POST.get('unit'),
-            quantity=Decimal(request.POST.get('quantity', 0)),
+            quantity=quantity,
             min_limit=Decimal(request.POST.get('min_limit', 0)),
             unit_cost=Decimal(request.POST.get('unit_cost', 0)),
-            supply_cost=Decimal(request.POST.get('supply_cost', 0)),
+            supply_cost=supply_cost,
             Supplier_id=supplier_id if supplier_id else None,
             size_id=request.POST.get('size') or None,
             color_id=request.POST.get('color') or None,
         )
 
-        # 4. تسجيل الحركة المالية في سجل التوريد (SupplyLog)
-        if item.Supplier and item.quantity > 0:
-            from .models import SupplyLog
+        # 5. تسجيل الحركة المالية التفصيلية في SupplyLog
+        if item.Supplier and quantity > 0:
             SupplyLog.objects.create(
                 supplier=item.Supplier,
                 item=item,
-                quantity_added=item.quantity,
-                cost_at_time=item.supply_cost,
-                total_amount=item.quantity * item.supply_cost
+                quantity_added=quantity,
+                cost_at_time=supply_cost,
+                total_amount=total_amount,
+                paid_amount=paid_amount,       # المبلغ الذي دفعه المستخدم فعلاً
+                remaining_amount=remaining_amount # الباقي الذي سيُسجل كدين
             )
 
-        messages.success(request, 'تم إضافة الصنف والمورد وتسجيل المبلغ المالي بنجاح')
+        messages.success(request, f'تم إضافة الصنف. الإجمالي: {total_amount} ج.م | المدفوع: {paid_amount} ج.م | المتبقي: {remaining_amount} ج.م')
         return redirect('inventory_management')
+        
     except Exception as e:
         messages.error(request, f'حدث خطأ: {str(e)}')
         return redirect('inventory_management')
+    
 # AJAX للتحقق من وجود مورد بناءً على رقم الهاتف
 @login_required
 def check_supplier_by_phone(request):
@@ -508,32 +522,88 @@ def process_order_action(request, order_id):
 
     return redirect('order_detail', order_id=order.id)
 
+from django.db.models import Sum
+from .models import Supplier, SupplyLog
+
 def supplies_management(request):
-    # جلب جميع الموردين من الأحدث للأقدم
-    suppliers = Supplier.objects.all().order_by('-id')
-    
-    # معالجة إضافة مورد جديد عبر POST
     if request.method == "POST":
         name = request.POST.get('name')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        address = request.POST.get('address')
+        # تم تغيير 'phone' إلى 'mobil' ليتوافق مع الـ HTML الأخير
+        mobil = request.POST.get('mobil') 
         category = request.POST.get('category')
-        
-        if name and phone:
+        address = request.POST.get('address', '')
+
+        if name and mobil:
             Supplier.objects.create(
                 name=name,
-                phone=phone,
-                email=email,
-                address=address,
-                category=category
+                mobil=mobil,
+                category=category,
+                address=address
             )
+            messages.success(request, f"تم إضافة المورد {name} بنجاح")
             return redirect('supplies_management')
 
-    return render(request, 'pos/supplies_management.html', {'suppliers': suppliers})
+    suppliers = Supplier.objects.all().order_by('-id')
+    
+    # حساب إجمالي الديون في السوق (جمع كل الـ remaining_amount في السيستم)
+    total_debts = SupplyLog.objects.aggregate(total=Sum('remaining_amount'))['total'] or 0
 
-# دالة لحذف المورد
+    return render(request, 'pos/supplies_management.html', {
+        'suppliers': suppliers,
+        'total_debts': total_debts, # تأكد من الاسم ليتوافق مع الـ HTML
+    })
+
 def delete_supplier(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
+    supplier_name = supplier.name
     supplier.delete()
+    messages.warning(request, f"تم حذف المورد {supplier_name} بنجاح.")
     return redirect('supplies_management')
+
+@require_POST
+def pay_supplier_debt(request):
+    supplier_id = request.POST.get('supplier_id')
+    amount_raw = request.POST.get('amount', 0)
+    
+    try:
+        amount_paid = Decimal(amount_raw)
+        if amount_paid <= 0:
+            messages.error(request, "يرجى إدخال مبلغ صحيح")
+            return redirect('supplies_management')
+
+        supplier = Supplier.objects.get(id=supplier_id)
+        
+        # تسجيل عملية السداد
+        SupplyLog.objects.create(
+            supplier=supplier,
+            item=None, 
+            quantity_added=0,
+            cost_at_time=0,
+            total_amount=0,
+            paid_amount=amount_paid,
+            remaining_amount=-amount_paid 
+        )
+        
+        messages.success(request, f"تم تسجيل سداد مبلغ {amount_paid} ج.م للمورد {supplier.name}")
+    except Exception as e:
+        messages.error(request, f"خطأ أثناء السداد: {str(e)}")
+        
+    return redirect('supplies_management')
+
+def get_supplier_logs(request, supplier_id):
+    try:
+        supplier = Supplier.objects.get(id=supplier_id)
+        logs = supplier.supply_history.all().order_by('-created_at')
+        
+        logs_list = []
+        for log in logs:
+            logs_list.append({
+                'date': log.created_at.strftime('%Y-%m-%d'),
+                'item_name': log.item.name if log.item else "سداد نقدي / دفعة حساب",
+                'total_amount': float(log.total_amount),
+                'paid_amount': float(log.paid_amount),
+                'remaining_amount': float(log.remaining_amount),
+            })
+        return JsonResponse({'logs': logs_list})
+    except Supplier.DoesNotExist:
+        return JsonResponse({'error': 'المورد غير موجود'}, status=404)

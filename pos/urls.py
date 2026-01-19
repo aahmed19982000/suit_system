@@ -21,6 +21,8 @@ urlpatterns = [
     path('pos/search-customer/', views.search_customer, name='search_customer'),
     path('check-supplier/', views.check_supplier_by_phone, name='check_supplier_by_phone'),
     path('supplies-management/', views.supplies_management, name='supplies_management'),
-    path('supplies/delete/<int:pk>/', views.delete_supplier, name='delete_supplier'),
-
+    path('delete-supplier/<int:pk>/', views.delete_supplier, name='delete_supplier'),
+    path('suppliers/get-logs/<int:supplier_id>/', views.get_supplier_logs, name='get_supplier_logs'),
+    path('suppliers/pay-debt/', views.pay_supplier_debt, name='pay_supplier_debt'),
+    path('suppliers/get-logs/<int:supplier_id>/', views.get_supplier_logs, name='get_supplier_logs'),
 ]
