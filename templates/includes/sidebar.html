@@ -5,8 +5,7 @@
             <p class="store-branch">فرع شطورة</p>
         </div>
         <div class="brand-logo">
-            <div class="logo-circle">🍴</div>
-        </div>
+            <div class="logo-circle">👔</div> </div>
     </div>
 
     <nav class="sidebar-menu">
@@ -19,29 +18,42 @@
                         <span class="text">لوحة التحكم</span>
                     </a>
                 </li>
-               
+                
                 <li>
-                    <a href="{% url 'pos_page' %}" class="{% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+                    <a href="{% url 'pos_page' %}" class="{% if request.resolver_match.url_name == 'pos_page' %}active{% endif %}">
                         <span class="icon">📋</span>
                         <span class="text">انشاء طلب</span>
                     </a>
                 </li>
+
                 <li>
-                
                     <a href="{% url 'menu_management' %}" class="{% if request.resolver_match.url_name == 'menu_management' %}active{% endif %}">
-                        <span class="icon">🍽️</span>
+                        <span class="icon">👔</span>
                         <span class="text">إدارة القائمة</span>
-                    <a href="{% url 'inventory_management' %} " class="{% if request.resolver_match.url_name == 'inventory' %}active{% endif %}">
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'inventory_management' %}" class="{% if request.resolver_match.url_name == 'inventory_management' %}active{% endif %}">
                         <span class="icon">📦</span>
                         <span class="text">المخزون</span>
                     </a>
                 </li>
+
+                <li>
+                    <a href="{% url 'supplies_management' %}" class="{% if request.resolver_match.url_name == 'supplies_management' %}active{% endif %}">
+                        <span class="icon">🚛</span>
+                        <span class="text">الموردين</span>
+                    </a>
+                </li>
+
                 <li>
                     <a href="{% url 'sales_reports' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
                         <span class="icon">📊</span>
                         <span class="text">تقارير المبيعات</span>
                     </a>
                 </li>
+
                 <li>
                     <a href="{% url 'customer_management' %}" class="{% if request.resolver_match.url_name == 'customer_management' %}active{% endif %}">
                         <span class="icon">👥</span>
@@ -50,12 +62,11 @@
                 </li>
 
                 <li>
-                    <a href="{% url 'orders' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
-                        <span class="icon"></span>
-                        <span class="text">كل المبيعات </span>
+                    <a href="{% url 'orders' %}" class="{% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+                        <span class="icon">🧾</span>
+                        <span class="text">كل المبيعات</span>
                     </a>
                 </li>
-                <li>
             </ul>
         </div>
 
@@ -63,7 +74,7 @@
             <h3 class="menu-title">الإدارة</h3>
             <ul class="menu-items">
                 <li>
-                    <a href="{%url 'employees_management' %}" class="{% if request.resolver_match.url_name == 'employees' %}active{% endif %}">
+                    <a href="{% url 'employees_management' %}" class="{% if request.resolver_match.url_name == 'employees_management' %}active{% endif %}">
                         <span class="icon">👥</span>
                         <span class="text">الموظفين</span>
                     </a>
@@ -97,7 +108,7 @@
                 </h4>
                 <p class="user-role">
                     {% if user.is_authenticated %}
-                        {% if user.is_superuser %}مدير نظام{% else %}كاشير - مسائي{% endif %}
+                        {% if user.is_superuser %}مدير نظام{% else %}كاشير{% endif %}
                     {% else %}
                         غير مسجل
                     {% endif %}
@@ -110,6 +121,5 @@
                 <span class="logout-icon">↪</span>
             </button>
         </form>
-        
     </div>
 </aside>
