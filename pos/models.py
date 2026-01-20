@@ -59,22 +59,7 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id} - {self.user.username}"
 
-class OrderItem(models.Model):
-    order = models.ForeignKey(
-        Order,
-        related_name='items',  # 🔥 المهم هنا
-        on_delete=models.CASCADE
-    )
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField()
 
-    def __str__(self):
-        return f"{self.product.name} x {self.quantity}"
-
-    def total_price(self):
-        return self.price * self.quantity
-    
 
 
 class Customer(models.Model):
@@ -123,6 +108,8 @@ class InventoryItem(models.Model):
     profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الربح المتوقع", default=0)
     updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
     Supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="المورد", null=True, blank=True)
+    is_for_rental = models.BooleanField(default=False, verbose_name="متاح للإيجار؟")
+    is_available = models.BooleanField(default=True, verbose_name="متاح حالياً (غير محجوز)")
 
     @property
     def total_value(self):
@@ -182,3 +169,49 @@ class SupplyLog(models.Model):
     def __str__(self):
         name = self.item.name if self.item else "سداد مالي"
         return f"{name} - {self.supplier.name} ({self.created_at.date()})"
+    
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(
+        Order,
+        related_name='items',
+        on_delete=models.CASCADE
+    )
+    # التعديل هنا: نربطه بالمخزن بدلاً من Product
+    product = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, verbose_name="الصنف")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="سعر البيع")
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الكمية") # Decimal لدعم الكسور
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"
+
+    @property # استخدم property أفضل من دالة عادية لسهولة الاستدعاء في القوالب
+    def get_total_item_price(self):
+        return self.price * self.quantity
+    
+
+
+# في ملف models.py
+
+class RentalOrder(models.Model):
+    STATUS_CHOICES = (
+        ('booked', 'محجوز'),
+        ('picked_up', 'تم الاستلام'),
+        ('returned', 'تم الترجيع'),
+        ('late', 'متأخر'),
+    )
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="العميل")
+    item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, verbose_name="البدلة")
+    rental_date = models.DateField(verbose_name="تاريخ الحجز/الخروج")
+    return_date = models.DateField(verbose_name="تاريخ العودة المتوقع")
+    actual_return_date = models.DateField(null=True, blank=True, verbose_name="تاريخ العودة الفعلي")
+    
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="قيمة الإيجار")
+    deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مبلغ التأمين")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='booked')
+    notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات (مقاسات، تعديلات)")
+
+    def __str__(self):
+        return f"تأجير {self.item.name} - {self.customer.name}"

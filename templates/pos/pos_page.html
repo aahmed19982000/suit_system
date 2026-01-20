@@ -1,88 +1,49 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}نقطة البيع - فطاطري البركة{% endblock %}
+{% block title %}نقطة البيع - كريم هريدي للبدل{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pos.css' %}">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-    /* تنسيقات واجهة السلة والفوتر */
-    .cart-sidebar {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 20px);
-        position: sticky;
-        top: 10px;
-    }
+    /* التنسيقات العامة للواجهة */
+    .cart-sidebar { display: flex; flex-direction: column; height: calc(100vh - 20px); position: sticky; top: 10px; }
+    #cartItemsContainer { flex: 1; overflow-y: auto; padding-right: 5px; min-height: 200px; }
+    .btn-top-action { color: white !important; text-decoration: none; padding: 8px 15px; border-radius: 8px; font-size: 0.9rem; font-weight: bold; margin-left: 10px; display: flex; align-items: center; gap: 5px; border: none; cursor: pointer; font-family: 'Cairo'; }
+    .btn-return { background-color: #f39c12; }
+    .btn-rental-trigger { background-color: #e67e22; }
 
-    #cartItemsContainer {
-        flex: 1;
-        overflow-y: auto;
-        padding-right: 5px;
-        min-height: 200px;
-    }
+    /* النوافذ المنبثقة */
+    .custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 450px; direction: rtl; font-family: 'Cairo', sans-serif; }
+    .modal-btn { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+    .btn-confirm { background: #27ae60; color: white; }
+    .btn-cancel { background: none; color: #e74c3c; }
+    .input-field { width: 100%; padding: 10px; margin: 8px 0; border: 2px solid #eee; border-radius: 8px; font-family: 'Cairo'; box-sizing: border-box; }
+    .row-flex { display: flex; gap: 10px; }
+    .row-flex div { flex: 1; }
 
-    .btn-return-action {
-        background-color: #f39c12;
-        color: white !important;
-        text-decoration: none;
-        padding: 8px 15px;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        font-weight: bold;
-        margin-left: 10px;
-        display: flex;
-        align-items: center;
-        gap: 5px;
+    /* تنسيق الطباعة - مطابق تماماً للمثال المطلوب */
+    @media print {
+        @page { size: 80mm auto; margin: 0; }
+        body { margin: 0; padding: 0; visibility: hidden; }
+        #receipt-print-area { visibility: visible; position: absolute; left: 0; top: 0; width: 80mm; background: #fff; }
+        #receipt-print-area * { visibility: visible; }
     }
-
-    /* تنسيق النوافذ المنبثقة (Modals) */
-    .custom-modal {
-        display: none; /* مخفي افتراضياً */
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-        backdrop-filter: blur(3px);
-    }
-    .modal-content {
-        background: white;
-        padding: 30px;
-        border-radius: 15px;
-        width: 420px;
-        direction: rtl;
-        font-family: 'Cairo', sans-serif;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-    .modal-btn {
-        width: 100%;
-        padding: 15px;
-        margin: 10px 0;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 1.1rem;
-        transition: 0.2s;
-    }
-    .btn-table { background: #27ae60; color: white; }
-    .btn-delivery { background: #3498db; color: white; }
-    .btn-search { background: #8e44ad; color: white; margin-bottom: 5px; }
     
-    .input-field {
-        width: 100%;
-        padding: 12px;
-        margin: 10px 0;
-        border: 2px solid #eee;
-        border-radius: 8px;
-        font-family: 'Cairo';
-        box-sizing: border-box;
-    }
-    .input-field:focus { border-color: #3498db; outline: none; }
+    .receipt { width: 80mm; padding: 6px; box-sizing: border-box; font-size: 12px; font-family: 'Cairo', sans-serif; }
+    .center { text-align: center; }
+    .receipt hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .info { font-size: 11px; }
+    .info div { display: flex; justify-content: space-between; }
+    .receipt table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .receipt th, .receipt td { padding: 3px 0; }
+    .receipt th { border-bottom: 1px dashed #000; }
+    .receipt td:first-child, .receipt th:first-child { text-align: right; }
+    .receipt td:last-child, .receipt th:last-child { text-align: left; }
+    .total-row { font-weight: bold; font-size: 13px; }
+    .footer { text-align: center; font-size: 11px; margin-top: 8px; }
 </style>
 {% endblock %}
 
@@ -95,9 +56,8 @@
                 <input type="text" id="posSearch" placeholder="ابحث عن صنف...">
             </div>
             <div class="user-actions">
-                <a href="{% url 'orders' %}" class="btn-return-action">🔄 إضافة مرتجع</a>
-                <button class="action-circle">🔔</button>
-                <button class="action-circle">⚙️</button>
+                <button class="btn-top-action btn-rental-trigger" onclick="openRentalModal()">👔 تأجير بدلة</button>
+                <a href="{% url 'orders' %}" class="btn-top-action btn-return">🔄 المرتجعات</a>
             </div>
         </header>
 
@@ -111,16 +71,14 @@
         </nav>
 
         <div class="products-layout" id="productsGrid">
-            {% for item in products %} <div class="product-item" data-category="{{ item.category.id }}">
+            {% for item in products %} 
+            <div class="product-item" data-category="{{ item.category.id }}">
                 <div class="product-main-info">
                     <h3 class="product-title">{{ item.name }}</h3>
                     <div class="product-price-tag">{{ item.unit_cost }} <span>ج.م</span></div>
                 </div>
-                <p class="product-desc">المتاح: {{ item.quantity }} {{ item.unit.name }}</p>
-                <button class="add-to-cart-btn" 
-                        data-id="{{ item.id }}" 
-                        data-name="{{ item.name }}" 
-                        data-price="{{ item.unit_cost }}"> إضافة + </button>
+                <p class="product-desc">المتاح: {{ item.quantity }}</p>
+                <button class="add-to-cart-btn" data-id="{{ item.id }}" data-name="{{ item.name }}" data-price="{{ item.unit_cost }}"> إضافة + </button>
             </div>
             {% endfor %}
         </div>
@@ -128,59 +86,113 @@
 
     <aside class="cart-sidebar">
         <div class="cart-header">
-            <div class="cart-meta">
-                <h2>الطلب الحالي</h2>
-                <span class="order-id" id="displayOrderId">#ORD-جديد</span>
-            </div>
+            <div class="cart-meta"><h2>الطلب الحالي</h2><span class="order-id">#قائمة_البيع</span></div>
             <button class="clear-cart" id="clearCart">🗑️</button>
         </div>
-
-        <div class="cart-items-container" id="cartItemsContainer">
-            <div class="empty-cart-msg">السلة فارغة</div>
-        </div>
-
+        <div class="cart-items-container" id="cartItemsContainer"><div class="empty-cart-msg">السلة فارغة</div></div>
         <div class="cart-summary-footer">
-            <div class="billing-details">
-                <div class="bill-row"><span>المجموع الفرعي</span> <span id="subtotalDisplay">0.00 ج.م</span></div>
-                <div class="bill-row"><span>الضريبة (0%)</span> <span id="taxDisplay">0.00 ج.م</span></div>
-                <div class="bill-row grand-total"><span>الإجمالي النهائي</span> <span id="totalDisplay">0.00 ج.م</span></div>
-            </div>
-
-            <div class="checkout-grid">
-                <button class="check-btn cash" id="cashCheckout">تنفيذ الطلب </button>
-            </div>
+            <div class="bill-row"><span>المجموع الإجمالي</span> <span id="totalDisplay" style="font-weight: bold;">0.00 ج.م</span></div>
+            <button class="check-btn cash" id="cashCheckout" style="width: 100%; margin-top: 10px;">اتمام البيع (كاش)</button>
         </div>
     </aside>
 </div>
 
+<div id="rentalModal" class="custom-modal">
+    <div class="modal-content">
+        <h3 style="border-bottom: 2px solid #e67e22; padding-bottom: 10px;">تسجيل حجز تأجير</h3>
+        <label>وصف البدلة:</label>
+        <input type="text" id="rentItemName" class="input-field" placeholder="بدلة سوداء سليم">
+        <label>المقاسات المأخوذة:</label>
+        <input type="text" id="rentSizes" class="input-field" placeholder="كتف 44، طول 75...">
+        <label>ملاحظات:</label>
+        <textarea id="rentNotes" class="input-field" placeholder="ملاحظات العميل..."></textarea>
+        <div class="row-flex">
+            <div><label>تاريخ الاستلام:</label><input type="date" id="rentStart" class="input-field"></div>
+            <div><label>تاريخ العودة:</label><input type="date" id="rentEnd" class="input-field"></div>
+        </div>
+        <div class="row-flex">
+            <div><label>سعر الإيجار:</label><input type="number" id="rentPrice" class="input-field"></div>
+            <div><label>التأمين:</label><input type="number" id="rentDeposit" class="input-field"></div>
+        </div>
+        <button class="modal-btn btn-confirm" style="background:#e67e22;" onclick="submitRental()">تأكيد وطباعة 🖨️</button>
+        <button class="modal-btn btn-cancel" onclick="closeModals()">إلغاء</button>
+    </div>
+</div>
+
 <div id="orderTypeModal" class="custom-modal">
-    <div class="modal-content text-center" style="text-align: center;">
-        <h3 style="margin-bottom: 20px;">اختر نوع الطلب</h3>
-        <button class="modal-btn btn-table" onclick="selectOrderType('table')">عميل فرع</button>
-        <button class="modal-btn btn-delivery" onclick="selectOrderType('delivery')">🛵 طلب دليفري / توصيل</button>
-        <button onclick="closeModals()" style="background:none; border:none; color:#e74c3c; cursor:pointer; margin-top:10px;">إلغاء العملية</button>
+    <div class="modal-content" style="text-align: center;">
+        <h3>نوع العملية</h3>
+        <button class="modal-btn btn-confirm" onclick="selectOrderType('table')">بيع نقدي سريع</button>
+        <button class="modal-btn" style="background:#3498db; color:white;" onclick="selectOrderType('delivery')">تسجيل بيانات عميل</button>
+        <button class="modal-btn btn-cancel" onclick="closeModals()">تراجع</button>
     </div>
 </div>
 
 <div id="customerModal" class="custom-modal">
     <div class="modal-content">
-        <h3 style="margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">بيانات عميل الدليفري</h3>
-        
-        <label>رقم الهاتف:</label>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="custPhone" class="input-field" placeholder="ادخل رقم الهاتف للاستعلام">
-            <button class="modal-btn btn-search" style="width: 80px;" onclick="searchCustomer()">بحث</button>
+        <h3>بيانات العميل</h3>
+        <input type="text" id="custPhone" class="input-field" placeholder="رقم الهاتف">
+        <button class="modal-btn btn-confirm" onclick="searchCustomer()">بحث</button>
+        <div id="customerDetailsForm" style="display:none;">
+            <input type="text" id="custName" class="input-field" placeholder="الاسم">
+            <textarea id="custAddress" class="input-field" placeholder="العنوان"></textarea>
+            <button class="modal-btn btn-confirm" onclick="finalizeOrder()">تأكيد 🖨️</button>
+        </div>
+    </div>
+</div>
+
+<div id="receipt-print-area" style="display: none;">
+    <div class="receipt">
+        <div class="center">
+            <h2 style="margin:2px 0;">كريم هريدي</h2>
+            <div>محل بدل رجالي</div>
+            <div>طريق أسيوط – سوهاج</div>
+            <div>📞 01030491917</div>
         </div>
 
-        <div id="customerDetailsForm" style="display:none; margin-top:10px;">
-            <label>اسم العميل:</label>
-            <input type="text" id="custName" class="input-field" placeholder="اسم العميل">
-            <label>العنوان بالتفصيل:</label>
-            <textarea id="custAddress" class="input-field" style="height: 80px;" placeholder="العنوان، الدور، الشقة..."></textarea>
-            
-            <button class="modal-btn btn-table" style="margin-top: 15px;" onclick="finalizeOrder()">تأكيد وتسجيل الطلب 🖨️</button>
+        <hr>
+
+        <div class="info">
+            <div><span>رقم العملية</span><span id="p-id">#--</span></div>
+            <div><span>التاريخ</span><span id="p-date"></span></div>
+            <div><span>النوع</span><span id="p-label"></span></div>
         </div>
-        <button onclick="closeModals()" style="width:100%; background:none; border:none; color:gray; cursor:pointer;">رجوع</button>
+
+        <hr>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>الصنف</th>
+                    <th style="text-align:center;">ك</th>
+                    <th style="text-align:left;">ج</th>
+                </tr>
+            </thead>
+            <tbody id="p-items-body"></tbody>
+        </table>
+
+        <hr>
+
+        <table>
+            <tr class="total-row">
+                <td>الإجمالي</td>
+                <td></td>
+                <td style="text-align:left;"><span id="p-total"></span> ج.م</td>
+            </tr>
+            <tr id="p-deposit-row" style="display:none; font-size: 11px;">
+                <td>مبلغ التأمين</td>
+                <td></td>
+                <td style="text-align:left;"><span id="p-deposit"></span> ج.م</td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <div class="footer">
+            <div id="p-footer-msg">شكراً لزيارتكم 🌹</div>
+            <div id="p-footer-policy">الاستبدال خلال 14 يوم</div>
+            <div style="margin-top:6px;">برمجة وتطوير احمد ابرهيم</div>
+        </div>
     </div>
 </div>
 
@@ -188,16 +200,11 @@
 let cart = [];
 let currentOrderType = 'table';
 
-// إضافة العناصر للسلة
+// السلة
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('add-to-cart-btn')) {
         const btn = e.target;
-        const product = { 
-            id: btn.dataset.id, 
-            name: btn.dataset.name, 
-            price: parseFloat(btn.dataset.price), 
-            qty: 1 
-        };
+        const product = { id: btn.dataset.id, name: btn.dataset.name, price: parseFloat(btn.dataset.price), qty: 1 };
         const existing = cart.find(item => item.id === product.id);
         if (existing) existing.qty++; else cart.push(product);
         renderCart();
@@ -207,194 +214,97 @@ document.addEventListener('click', function(e) {
 function renderCart() {
     const container = document.getElementById('cartItemsContainer');
     container.innerHTML = '';
-    let subtotal = 0;
-    if (cart.length === 0) container.innerHTML = '<div class="empty-cart-msg">السلة فارغة</div>';
+    let total = 0;
     cart.forEach(item => {
-        subtotal += (item.price * item.qty);
-        container.innerHTML += `<div class="cart-card">
-            <div class="cart-card-info"><h4>${item.name}</h4><div class="price-calc">${item.price} × ${item.qty} = <strong>${(item.price * item.qty).toFixed(2)} ج.م</strong></div></div>
-            <div class="cart-card-actions"><div class="stepper"><button onclick="updateQty('${item.id}', -1)">−</button><input type="number" value="${item.qty}" readonly><button onclick="updateQty('${item.id}', 1)">+</button></div></div>
+        total += (item.price * item.qty);
+        container.innerHTML += `<div class="cart-card" style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;">
+            <span>${item.name} (${item.qty})</span>
+            <span>${(item.price * item.qty).toFixed(2)}</span>
         </div>`;
     });
-    document.getElementById('subtotalDisplay').innerText = subtotal.toFixed(2) + ' ج.م';
-    document.getElementById('totalDisplay').innerText = subtotal.toFixed(2) + ' ج.م';
+    document.getElementById('totalDisplay').innerText = total.toFixed(2) + ' ج.م';
 }
 
-window.updateQty = function(id, change) {
-    const item = cart.find(i => i.id === id);
-    if (item) { item.qty += change; if (item.qty <= 0) cart = cart.filter(i => i.id !== id); renderCart(); }
-}
+function openRentalModal() { document.getElementById('rentStart').valueAsDate = new Date(); document.getElementById('rentalModal').style.display = 'flex'; }
+function closeModals() { document.querySelectorAll('.custom-modal').forEach(m => m.style.display = 'none'); }
 
-// فتح نافذة اختيار النوع عند الضغط على كاش
-document.getElementById('cashCheckout').onclick = () => {
-    if (cart.length === 0) return alert('السلة فارغة!');
-    document.getElementById('orderTypeModal').style.display = 'flex';
-};
+// طباعة التأجير
+function submitRental() {
+    const data = {
+        is_rental: true,
+        item_name: document.getElementById('rentItemName').value,
+        sizes: document.getElementById('rentSizes').value,
+        notes: document.getElementById('rentNotes').value,
+        price: document.getElementById('rentPrice').value,
+        deposit: document.getElementById('rentDeposit').value,
+        start_date: document.getElementById('rentStart').value,
+        end_date: document.getElementById('rentEnd').value
+    };
 
-function selectOrderType(type) {
-    currentOrderType = type;
-    document.getElementById('orderTypeModal').style.display = 'none';
-    if (type === 'table') {
-        if(confirm('هل تريد تسجيل طلب طاولة؟')) finalizeOrder();
-    } else {
-        document.getElementById('customerModal').style.display = 'flex';
-        document.getElementById('customerDetailsForm').style.display = 'none';
-        document.getElementById('custPhone').value = '';
-    }
-}
+    if (!data.item_name || !data.price) return alert("أكمل البيانات");
 
-// دالة البحث عن العميل
-function searchCustomer() {
-    const phone = document.getElementById('custPhone').value.trim();
-    if (!phone) return alert('يرجى إدخال الرقم');
+    document.getElementById('p-label').innerText = "فاتورة تأجير";
+    document.getElementById('p-date').innerText = new Date().toLocaleDateString('ar-EG');
+    document.getElementById('p-total').innerText = parseFloat(data.price).toFixed(2);
+    document.getElementById('p-deposit').innerText = parseFloat(data.deposit || 0).toFixed(2);
+    document.getElementById('p-deposit-row').style.display = 'table-row';
+    document.getElementById('p-footer-policy').innerText = "يتم استرداد التأمين عند تسليم البدلة";
 
-    // استخدام المسار الديناميكي
-    const url = "{% url 'search_customer' %}?phone=" + phone;
+    document.getElementById('p-items-body').innerHTML = `
+        <tr>
+            <td>
+                ${data.item_name}<br>
+                <small>المقاس: ${data.sizes}</small><br>
+                <small>من: ${data.start_date} إلى: ${data.end_date}</small>
+            </td>
+            <td style="text-align:center;">1</td>
+            <td style="text-align:left;">${data.price}</td>
+        </tr>`;
 
-    fetch(url)
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById('customerDetailsForm').style.display = 'block';
-        if (data.found) {
-            document.getElementById('custName').value = data.name;
-            document.getElementById('custAddress').value = data.address;
-        } else {
-            alert('رقم جديد، يرجى كتابة البيانات');
-            document.getElementById('custName').value = '';
-            document.getElementById('custAddress').value = '';
-        }
-    })
-    .catch(err => alert('خطأ في الاتصال بالسيرفر'));
-}
-
-// تنفيذ الطلب النهائي
-function finalizeOrder() {
-    const total = parseFloat(document.getElementById('totalDisplay').innerText);
-    let customerData = null;
-
-    if (currentOrderType === 'delivery') {
-        customerData = {
-            phone: document.getElementById('custPhone').value,
-            name: document.getElementById('custName').value,
-            address: document.getElementById('custAddress').value
-        };
-        if (!customerData.name || !customerData.address) return alert('يرجى إكمال بيانات العميل');
-    }
+    window.print();
 
     fetch("{% url 'cash_checkout' %}", {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json', 
-            'X-CSRFToken': '{{ csrf_token }}' 
-        },
-        body: JSON.stringify({ cart, total, order_type: currentOrderType, customer_data: customerData })
-    })
-    .then(res => {
-        if (!res.ok) return res.json().then(err => { throw new Error(err.message) });
-        return res.json();
-    })
-    .then(data => {
-        if(data.status === 'success') {
-            // استدعاء اسم الدالة الصحيح
-            updatePrintReceipt(data.order_id, total, customerData);
-            
-            // إظهار منطقة الطباعة مؤقتاً
-            const printArea = document.getElementById('receipt-print-area');
-            printArea.style.display = 'block';
-            window.print();
-            printArea.style.display = 'none';
-            
-            // تصفير الصفحة
-            cart = [];
-            renderCart();
-            closeModals();
-            alert('تم البيع وتحديث المخزن بنجاح!');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert('فشلت العملية: ' + err.message);
-    });
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify(data)
+    }).then(() => location.reload());
 }
 
-function updatePrintReceipt(orderId, total, customerData) {
-    document.getElementById('print-order-id').innerText = orderId;
-    document.getElementById('print-date').innerText = new Date().toLocaleString('ar-EG');
-    document.getElementById('print-total').innerText = total.toFixed(2);
-    
-    const itemsBody = document.getElementById('print-items-body');
-    itemsBody.innerHTML = cart.map(item => `
+// اتمام البيع العادي
+document.getElementById('cashCheckout').onclick = () => { if (cart.length > 0) document.getElementById('orderTypeModal').style.display = 'flex'; };
+
+function selectOrderType(type) { currentOrderType = type; closeModals(); if (type === 'table') finalizeOrder(); else document.getElementById('customerModal').style.display = 'flex'; }
+
+function finalizeOrder() {
+    const total = parseFloat(document.getElementById('totalDisplay').innerText);
+    document.getElementById('p-label').innerText = "نقدي";
+    document.getElementById('p-date').innerText = new Date().toLocaleDateString('ar-EG');
+    document.getElementById('p-total').innerText = total.toFixed(2);
+    document.getElementById('p-deposit-row').style.display = 'none';
+    document.getElementById('p-footer-policy').innerText = "الاستبدال خلال 14 يوم";
+
+    document.getElementById('p-items-body').innerHTML = cart.map(i => `
         <tr>
-            <td style="padding: 5px 0;">${item.name}</td>
-            <td style="text-align: center;">${item.qty}</td>
-            <td style="text-align: left;">${(item.price * item.qty).toFixed(2)}</td>
-        </tr>
-    `).join('');
+            <td>${i.name}</td>
+            <td style="text-align:center;">${i.qty}</td>
+            <td style="text-align:left;">${i.price}</td>
+        </tr>`).join('');
+
+    window.print();
+
+    fetch("{% url 'cash_checkout' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ cart, total, order_type: currentOrderType })
+    }).then(() => location.reload());
 }
 
-function closeModals() { document.querySelectorAll('.custom-modal').forEach(m => m.style.display='none'); }
-
-// الفلترة والبحث
-document.getElementById('posSearch').oninput = (e) => {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll('.product-item').forEach(item => {
-        item.style.display = item.querySelector('.product-title').innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+function searchCustomer() {
+    fetch("{% url 'search_customer' %}?phone=" + document.getElementById('custPhone').value)
+    .then(res => res.json()).then(data => {
+        document.getElementById('customerDetailsForm').style.display = 'block';
+        if (data.found) { document.getElementById('custName').value = data.name; document.getElementById('custAddress').value = data.address; }
     });
-};
-
-document.querySelectorAll('.cat-pill').forEach(pill => {
-    pill.onclick = function() {
-        document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-        this.classList.add('active');
-        const filter = this.dataset.filter;
-        document.querySelectorAll('.product-item').forEach(item => {
-            item.style.display = (filter === 'all' || item.dataset.category === filter) ? 'flex' : 'none';
-        });
-    };
-});
+}
 </script>
-
-<div id="receipt-print-area" style="display: none;">
-    <div class="receipt-container" style="width: 80mm; font-family: 'Cairo', sans-serif; direction: rtl; padding: 5px;">
-        <div style="text-align: center; margin-bottom: 10px;">
-            <h2 style="margin: 0;">فطاطري عباد الرحمن</h2>
-            <p style="font-size: 12px; margin: 5px 0;">فرع طهطا - رقم الهاتف</p>
-            <hr>
-            <h4 id="print-order-type" style="margin: 5px 0; background: #eee; padding: 2px;"></h4>
-        </div>
-
-        <div style="font-size: 13px; margin-bottom: 10px;">
-            <div>رقم الطلب: <span id="print-order-id"></span></div>
-            <div>التاريخ: <span id="print-date"></span></div>
-            <div id="print-customer-info" style="display: none;">
-                <hr>
-                <div>العميل: <span id="print-cust-name"></span></div>
-                <div>الهاتف: <span id="print-cust-phone"></span></div>
-                <div>العنوان: <span id="print-cust-address"></span></div>
-            </div>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-            <thead style="border-bottom: 1px dashed #000;">
-                <tr>
-                    <th style="text-align: right;">الصنف</th>
-                    <th>الكمية</th>
-                    <th style="text-align: left;">الإجمالي</th>
-                </tr>
-            </thead>
-            <tbody id="print-items-body">
-                </tbody>
-        </table>
-
-        <hr style="border-top: 1px dashed #000;">
-        <div style="text-align: left; font-weight: bold; font-size: 15px;">
-            الإجمالي النهائي: <span id="print-total"></span> ج.م
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px; font-size: 11px;">
-            <p>شكراً لزيارتكم!</p>
-            <p>برمجة وتطوير احمد ابراهيم </p>
-        </div>
-    </div>
-</div>
 {% endblock %}

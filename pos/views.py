@@ -92,64 +92,106 @@ def pos_page(request):
         'categories': categories
     })
 
+
+
 @csrf_exempt
 @login_required
 def cash_checkout(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            
+            # --- الحالة الأولى: منطق تأجير البدلة (الجديد) ---
+            if data.get('is_rental'):
+                item_name = data.get('item_name')
+                price = data.get('price', 0)
+                deposit = data.get('deposit', 0)
+                sizes = data.get('sizes', 'غير محدد')
+                notes = data.get('notes', 'لا يوجد')
+                dates = f"من {data.get('start_date')} إلى {data.get('end_date')}"
+
+                with transaction.atomic():
+                    # إنشاء الطلب كعملية تأجير
+                    order = Order.objects.create(
+                        user=request.user,
+                        payment_method='cash',
+                        total_price=Decimal(str(price)),
+                        # نضع كل التفاصيل في حقل الوصف أو ملاحظات الطلب إذا كان متاحاً
+                        # هنا نستخدم f-string لجمع البيانات المطلوبة للطباعة والسجل
+                    )
+                    
+                    # ملاحظة: إذا كان لديك حقل ملاحظات في موديل Order يفضل تخزينه فيه
+                    # order.notes = f"تأجير: {item_name} | مقاسات: {sizes} | تأمين: {deposit} | فترة: {dates} | ملاحظات إضافية: {notes}"
+                    # order.save()
+
+                    return JsonResponse({
+                        'status': 'success', 
+                        'order_id': order.id,
+                        'message': 'تم تسجيل عملية التأجير بنجاح'
+                    })
+
+            # --- الحالة الثانية: منطق البيع المباشر (الكود الأصلي الخاص بك) ---
             cart = data.get('cart', [])
             total = data.get('total')
             order_type = data.get('order_type')
             cust_data = data.get('customer_data')
 
+            if not cart:
+                return JsonResponse({'status': 'error', 'message': 'السلة فارغة!'}, status=400)
+
             with transaction.atomic():
-                # 1. العميل
+                # 1. معالجة بيانات العميل
                 customer_obj = None
                 if order_type == 'delivery' and cust_data:
                     customer_obj, created = Customer.objects.get_or_create(
                         mobil=cust_data['phone'],
                         defaults={'name': cust_data['name'], 'address': cust_data['address']}
                     )
-                    customer_obj.number_of_orders += 1
+                    customer_obj.number_of_orders = F('number_of_orders') + 1
                     customer_obj.save()
 
-                # 2. الطلب
+                # 2. إنشاء الطلب الرئيسي
                 order = Order.objects.create(
                     user=request.user,
                     customer=customer_obj,
                     payment_method='cash',
-                    total_price=total
+                    total_price=Decimal(str(total)),
                 )
 
-                # 3. الربط والخصم من المخزن
+                # 3. معالجة عناصر السلة والخصم من المخزن
                 for item in cart:
-                    # جلب الصنف من المخزن
-                    inv_item = get_object_or_404(InventoryItem, id=item['id'])
-                    qty_sold = int(item['qty'])
+                    inv_item = InventoryItem.objects.select_for_update().get(id=item['id'])
+                    qty_sold = Decimal(str(item['qty']))
 
-                    # خصم الكمية
-                    inv_item.quantity = F('quantity') - qty_sold
+                    if inv_item.quantity < qty_sold:
+                        return JsonResponse({
+                            'status': 'error', 
+                            'message': f'الكمية المتاحة من {inv_item.name} غير كافية (المتاح: {inv_item.quantity})'
+                        }, status=400)
+
+                    inv_item.quantity -= qty_sold
                     inv_item.save()
 
-                    # تسجيل الطلب
-                    # ملاحظة هامة: إذا تعطل هذا السطر، فمعناه أن الموديل OrderItem 
-                    # يحتاج حقل Product وليس InventoryItem. 
-                    # كحل مؤقت، سنربطه بـ product_id إذا كان متطابقاً أو ننشئ سجل تفاصيل.
                     OrderItem.objects.create(
                         order=order,
-                        product_id=inv_item.id, # تأكد أن الـ ID موجود في جدول المنتجات أيضاً
-                        price=item['price'],
+                        product_id=inv_item.id, 
+                        price=Decimal(str(item['price'])),
                         quantity=qty_sold
                     )
 
-                return JsonResponse({'status': 'success', 'order_id': order.id})
-        
+                return JsonResponse({
+                    'status': 'success', 
+                    'order_id': order.id,
+                    'message': 'تم تسجيل الطلب وتحديث المخزن'
+                })
+
+        except InventoryItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'أحد الأصناف غير موجود في المخزن'}, status=404)
         except Exception as e:
-            # طباعة الخطأ في التيرمينال لتعرف السبب الحقيقي (هام جداً)
-            print(f"CRITICAL ERROR: {str(e)}")
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-        
+            print(f"Checkout Error: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': 'حدث خطأ أثناء المعالجة'}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid Method'}, status=405)
 
 def orders(request):
     user = request.user
@@ -513,3 +555,34 @@ def delete_inventory_item(request):
         item = get_object_or_404(InventoryItem, id=item_id)
         item.delete()
         return JsonResponse({'status': 'success'})
+    
+
+@login_required
+def create_rental(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        try:
+            with transaction.atomic():
+                item = InventoryItem.objects.select_for_update().get(id=data['item_id'])
+                
+                if not item.is_available:
+                    return JsonResponse({'status': 'error', 'message': 'هذه البدلة محجوزة بالفعل'}, status=400)
+
+                # إنشاء عملية التأجير
+                rental = RentalOrder.objects.create(
+                    customer_id=data['customer_id'],
+                    item=item,
+                    rental_date=data['rental_date'],
+                    return_date=data['return_date'],
+                    total_price=data['price'],
+                    deposit_amount=data['deposit'],
+                    status='booked'
+                )
+
+                # تحديث حالة البدلة في المخزن
+                item.is_available = False
+                item.save()
+
+                return JsonResponse({'status': 'success', 'rental_id': rental.id})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
