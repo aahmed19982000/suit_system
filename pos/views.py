@@ -260,27 +260,47 @@ def add_inventory_item(request):
 
 @require_POST
 def update_inventory_quantity(request):
-    item_id = request.POST.get('item_id')
-    amount_raw = request.POST.get('amount', '0').strip()
-    action = request.POST.get('action')
-    try:
-        amount_clean = "".join(filter(lambda x: x in "0123456789.", amount_raw))
-        amount = Decimal(amount_clean)
-        item = get_object_or_404(InventoryItem, id=item_id)
-
-        if action == 'add':
-            item.quantity += amount
-        elif action == 'subtract':
-            if item.quantity < amount:
-                return JsonResponse({'status': 'error', 'message': 'المخزون لا يكفي'}, status=400)
-            item.quantity -= amount
+    if request.method == "POST":
+        item_id = request.POST.get('item_id')
         
-        item.save()
-        return JsonResponse({'status': 'success', 'message': 'تم التحديث بنجاح'})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        # دالة تنظيف الأرقام
+        def clean_decimal(val):
+            if not val: return Decimal('0')
+            clean_val = "".join(filter(lambda x: x in "0123456789.", str(val)))
+            return Decimal(clean_val) if clean_val else Decimal('0')
 
-# ================= SUPPLIER MANAGEMENT =================
+        try:
+            qty_added = clean_decimal(request.POST.get('quantity_added'))
+            paid_amount = clean_decimal(request.POST.get('paid_amount'))
+            
+            item = get_object_or_404(InventoryItem, id=item_id)
+
+            if qty_added > 0:
+                # 1. تحديث الكمية في المخزن (InventoryItem)
+                item.quantity += qty_added
+                item.save()
+
+                # 2. تسجيل العملية في سجل التوريد (SupplyLog)
+                # الموديل سيتكفل بحساب الإجمالي والديون في دالة save() الخاصة به
+                if item.Supplier:
+                    SupplyLog.objects.create(
+                        supplier=item.Supplier,  # تأكدنا أنها بحرف صغير كما في الموديل
+                        item=item,
+                        quantity_added=qty_added,
+                        cost_at_time=item.supply_cost, # السعر المسجل في الصنف
+                        paid_amount=paid_amount
+                    )
+                    # ملاحظة: مديونية المورد في موديلك تُحسب عبر @property (Sum) 
+                    # لذا لا حاجة لتحديث حقل debt يدوياً إذا لم يكن موجوداً كحقل ثابت.
+
+                return JsonResponse({'status': 'success', 'message': 'تم تحديث المخزون وسجل المورد بنجاح'})
+            
+            return JsonResponse({'status': 'error', 'message': 'يرجى إدخال كمية صحيحة'}, status=400)
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': f'خطأ: {str(e)}'}, status=400)
+
+    return JsonResponse({'status': 'error', 'message': 'طلب غير مسموح'}, status=405)# ================= SUPPLIER MANAGEMENT =================
 
 def supplies_management(request):
     if request.method == "POST":
@@ -289,12 +309,22 @@ def supplies_management(request):
         address = request.POST.get('address', '')
         if name and mobil:
             Supplier.objects.create(name=name, mobil=mobil, address=address)
-            messages.success(request, f"تم إضافة المورد {name}")
+            messages.success(request, f"تم إضافة المورد {name} بنجاح")
             return redirect('supplies_management')
 
     suppliers = Supplier.objects.all().order_by('-id')
+    # حساب إجمالي المديونية من كافة الموردين
     total_debts = SupplyLog.objects.aggregate(total=Sum('remaining_amount'))['total'] or 0
-    return render(request, 'pos/supplies_management.html', {'suppliers': suppliers, 'total_debts': total_debts})
+    # حساب إجمالي المدفوعات
+    total_spending = SupplyLog.objects.aggregate(total=Sum('paid_amount'))['total'] or 0
+    
+    context = {
+        'suppliers': suppliers, 
+        'total_debts': total_debts,
+        'total_spending': total_spending
+    }
+    return render(request, 'pos/supplies_management.html', context)
+
 
 def delete_supplier(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
@@ -306,40 +336,57 @@ def delete_supplier(request, pk):
 def pay_supplier_debt(request):
     supplier_id = request.POST.get('supplier_id')
     amount_raw = request.POST.get('amount', '0')
+    
     try:
         amount_paid = Decimal(amount_raw)
         if amount_paid <= 0:
-            messages.error(request, "مبلغ غير صحيح")
+            messages.error(request, "يرجى إدخال مبلغ صحيح أكبر من الصفر.")
             return redirect('supplies_management')
 
-        supplier = Supplier.objects.get(id=supplier_id)
+        supplier = get_object_or_404(Supplier, id=supplier_id)
+        
+        # تسجيل عملية السداد في جدول SupplyLog
+        # نضع قيم صفرية للكمية والتكلفة لأنها عملية سداد نقدي فقط
         SupplyLog.objects.create(
-            supplier=supplier, item=None, quantity_added=0, cost_at_time=0,
-            total_amount=0, paid_amount=amount_paid, remaining_amount=-amount_paid 
+            supplier=supplier,
+            item=None, 
+            quantity_added=0,
+            cost_at_time=0,
+            total_amount=0,
+            paid_amount=amount_paid,
+            remaining_amount=-amount_paid # القيمة السالبة هنا تخفض إجمالي الدين
         )
-        messages.success(request, f"تم سداد {amount_paid} ج.م")
+        
+        messages.success(request, f"تم تسجيل سداد مبلغ {amount_paid} ج.م للمورد {supplier.name}")
+    except (InvalidOperation, ValueError):
+        messages.error(request, "خطأ في صيغة المبلغ المدخل.")
     except Exception as e:
-        messages.error(request, str(e))
+        messages.error(request, f"حدث خطأ غير متوقع: {str(e)}")
+        
     return redirect('supplies_management')
 
 def get_supplier_logs(request, supplier_id):
     try:
-        # استخدام filter لضمان العمل حتى لو لم يتم تعريف related_name
-        logs = SupplyLog.objects.filter(supplier_id=supplier_id).order_by('-id')
+        # تأكد من استيراد الموديلات بشكل صحيح في بداية الملف
+        supplier = get_object_or_404(Supplier, id=supplier_id)
+        logs = supplier.supply_history.all().order_by('-created_at')
+        
         logs_list = []
         for log in logs:
-            # محاولة جلب التاريخ من created_at أو date
-            dt = getattr(log, 'created_at', getattr(log, 'date', timezone.now()))
             logs_list.append({
-                'date': dt.strftime('%Y-%m-%d'),
-                'item_name': log.item.name if log.item else "سداد نقدي / دفعة حساب",
+                'id': log.id,
+                'date': log.created_at.strftime('%Y-%m-%d %I:%M %p'),
+                'type': 'payment' if not log.item else 'supply',
+                'item_name': log.item.name if log.item else "سداد مالي",
+                'quantity': float(log.quantity_added or 0),
                 'total_amount': float(log.total_amount or 0),
                 'paid_amount': float(log.paid_amount or 0),
-                'remaining_amount': float(log.remaining_amount or 0),
+                'remaining': float(log.remaining_amount or 0), # أضفنا المتبقي هنا
             })
-        return JsonResponse({'logs': logs_list})
+        return JsonResponse({'status': 'success', 'logs': logs_list})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
 
 @login_required
 def check_supplier_by_phone(request):
@@ -389,3 +436,50 @@ def sales_reports(request):
 
 def employees_management(request):
     return render(request, 'pos/employees_management.html')
+
+
+# دالة حذف سجل توريد أو سداد فردي من كشف الحساب
+@require_POST
+def delete_supply_log(request, log_id):
+    log = get_object_or_404(SupplyLog, id=log_id)
+    supplier_id = log.supplier.id
+    log.delete()
+    messages.success(request, "تم حذف السجل وتحديث المديونية تلقائياً")
+    return redirect('supplies_management')
+
+# دالة تعديل مبلغ مدفوع في سجل معين
+@require_POST
+def edit_supply_log(request, log_id):
+    log = get_object_or_404(SupplyLog, id=log_id)
+    new_amount = request.POST.get('amount')
+    try:
+        log.paid_amount = Decimal(new_amount)
+        # سيقوم الموديل بإعادة حساب المتبقي في دالة save()
+        log.save()
+        messages.success(request, "تم تعديل السجل بنجاح")
+    except Exception as e:
+        messages.error(request, f"خطأ في التعديل: {str(e)}")
+    return redirect('supplies_management')
+
+
+
+# 1. دالة تعديل بيانات الصنف (الاسم والأسعار)
+def edit_inventory_item(request):
+    if request.method == "POST":
+        item_id = request.POST.get('item_id')
+        item = get_object_or_404(InventoryItem, id=item_id)
+        
+        item.name = request.POST.get('name')
+        item.unit_cost = request.POST.get('unit_cost')
+        item.supply_cost = request.POST.get('supply_cost')
+        item.save()
+        
+        return JsonResponse({'status': 'success'})
+
+# 2. دالة حذف الصنف
+def delete_inventory_item(request):
+    if request.method == "POST":
+        item_id = request.POST.get('item_id')
+        item = get_object_or_404(InventoryItem, id=item_id)
+        item.delete()
+        return JsonResponse({'status': 'success'})

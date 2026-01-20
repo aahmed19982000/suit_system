@@ -159,15 +159,23 @@ class SupplyLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ التوريد")
 
     def save(self, *args, **kwargs):
-        # إذا كان هناك صنف، نحسب الإجمالي بناءً على الكمية والسعر
+        # التأكد من تحويل كل القيم إلى Decimal لتجنب أخطاء النوع
+        from decimal import Decimal
+        quantity = Decimal(str(self.quantity_added or 0))
+        cost = Decimal(str(self.cost_at_time or 0))
+        paid = Decimal(str(self.paid_amount or 0))
+
         if self.item:
-            self.total_amount = self.quantity_added * self.cost_at_time
-            self.remaining_amount = self.total_amount - self.paid_amount
+            # عملية توريد صنف: الإجمالي = الكمية * السعر
+            self.total_amount = quantity * cost
+            self.remaining_amount = self.total_amount - paid
         else:
-            # في حالة السداد النقدي فقط
-            self.total_amount = 0
-            # المدفوع ينقص من المديونية الإجمالية
-            self.remaining_amount = - self.paid_amount
+            # عملية سداد نقدي فقط: لا يوجد إجمالي صنف
+            self.total_amount = Decimal('0.00')
+            self.quantity_added = Decimal('0.00')
+            self.cost_at_time = Decimal('0.00')
+            # المتبقي هنا يكون بالسالب لأنه يخصم من مديونية المورد الكلية
+            self.remaining_amount = - paid
             
         super().save(*args, **kwargs)
 
