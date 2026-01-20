@@ -281,7 +281,8 @@
 
         if (!phone) return alert('يرجى إدخال رقم الهاتف أولاً');
 
-        fetch(`/check-supplier/?phone=${phone}`)
+        fetch("{% url 'check_supplier_by_phone' %}?phone=" + phone)
+
             .then(res => res.json())
             .then(data => {
                 if (data.found) {

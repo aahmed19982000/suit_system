@@ -111,17 +111,16 @@
         </nav>
 
         <div class="products-layout" id="productsGrid">
-            {% for product in products %}
-            <div class="product-item" data-category="{{ product.Category.id }}">
+            {% for item in products %} <div class="product-item" data-category="{{ item.category.id }}">
                 <div class="product-main-info">
-                    <h3 class="product-title">{{ product.name }}</h3>
-                    <div class="product-price-tag">{{ product.price }} <span>ج.م</span></div>
+                    <h3 class="product-title">{{ item.name }}</h3>
+                    <div class="product-price-tag">{{ item.unit_cost }} <span>ج.م</span></div>
                 </div>
-                <p class="product-desc">{{ product.description|default:"-" }}</p>
+                <p class="product-desc">المتاح: {{ item.quantity }} {{ item.unit.name }}</p>
                 <button class="add-to-cart-btn" 
-                        data-id="{{ product.id }}" 
-                        data-name="{{ product.name }}" 
-                        data-price="{{ product.price }}"> إضافة + </button>
+                        data-id="{{ item.id }}" 
+                        data-name="{{ item.name }}" 
+                        data-price="{{ item.unit_cost }}"> إضافة + </button>
             </div>
             {% endfor %}
         </div>
@@ -271,9 +270,8 @@ function searchCustomer() {
 // تنفيذ الطلب النهائي
 function finalizeOrder() {
     const total = parseFloat(document.getElementById('totalDisplay').innerText);
-    const orderDisplay = document.getElementById('displayOrderId');
-    
     let customerData = null;
+
     if (currentOrderType === 'delivery') {
         customerData = {
             phone: document.getElementById('custPhone').value,
@@ -285,58 +283,53 @@ function finalizeOrder() {
 
     fetch("{% url 'cash_checkout' %}", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        headers: { 
+            'Content-Type': 'application/json', 
+            'X-CSRFToken': '{{ csrf_token }}' 
+        },
         body: JSON.stringify({ cart, total, order_type: currentOrderType, customer_data: customerData })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) return res.json().then(err => { throw new Error(err.message) });
+        return res.json();
+    })
     .then(data => {
         if(data.status === 'success') {
-            // --- بدء عملية التحضير للطباعة ---
-            document.getElementById('print-order-id').innerText = data.order_id;
-            document.getElementById('print-date').innerText = new Date().toLocaleString('ar-EG');
-            document.getElementById('print-order-type').innerText = (currentOrderType === 'delivery') ? "طلب دليفري" : "طلب صالة";
-            document.getElementById('print-total').innerText = total.toFixed(2);
-
-            // بيانات العميل
-            const custInfoDiv = document.getElementById('print-customer-info');
-            if (currentOrderType === 'delivery' && customerData) {
-                custInfoDiv.style.display = 'block';
-                document.getElementById('print-cust-name').innerText = customerData.name;
-                document.getElementById('print-cust-phone').innerText = customerData.phone;
-                document.getElementById('print-cust-address').innerText = customerData.address;
-            } else {
-                custInfoDiv.style.display = 'none';
-            }
-
-            // تعبئة الأصناف
-            const itemsBody = document.getElementById('print-items-body');
-            itemsBody.innerHTML = '';
-            cart.forEach(item => {
-                itemsBody.innerHTML += `
-                    <tr>
-                        <td style="padding: 5px 0;">${item.name}</td>
-                        <td style="text-align: center;">${item.qty}</td>
-                        <td style="text-align: left;">${(item.price * item.qty).toFixed(2)}</td>
-                    </tr>
-                `;
-            });
-
-            // تنفيذ الطباعة
-            setTimeout(() => {
-                window.print();
-                // تنظيف السلة وإعادة التعيين بعد الطباعة
-                alert('تم تسجيل الطلب بنجاح! رقم: ' + data.order_id);
-                cart = [];
-                renderCart();
-                closeModals();
-                orderDisplay.innerText = "#ORD-جديد";
-            }, 500);
-
-        } else {
-            alert('خطأ: ' + data.message);
+            // استدعاء اسم الدالة الصحيح
+            updatePrintReceipt(data.order_id, total, customerData);
+            
+            // إظهار منطقة الطباعة مؤقتاً
+            const printArea = document.getElementById('receipt-print-area');
+            printArea.style.display = 'block';
+            window.print();
+            printArea.style.display = 'none';
+            
+            // تصفير الصفحة
+            cart = [];
+            renderCart();
+            closeModals();
+            alert('تم البيع وتحديث المخزن بنجاح!');
         }
     })
-    .catch(err => alert('خطأ في الاتصال بالسيرفر'));
+    .catch(err => {
+        console.error(err);
+        alert('فشلت العملية: ' + err.message);
+    });
+}
+
+function updatePrintReceipt(orderId, total, customerData) {
+    document.getElementById('print-order-id').innerText = orderId;
+    document.getElementById('print-date').innerText = new Date().toLocaleString('ar-EG');
+    document.getElementById('print-total').innerText = total.toFixed(2);
+    
+    const itemsBody = document.getElementById('print-items-body');
+    itemsBody.innerHTML = cart.map(item => `
+        <tr>
+            <td style="padding: 5px 0;">${item.name}</td>
+            <td style="text-align: center;">${item.qty}</td>
+            <td style="text-align: left;">${(item.price * item.qty).toFixed(2)}</td>
+        </tr>
+    `).join('');
 }
 
 function closeModals() { document.querySelectorAll('.custom-modal').forEach(m => m.style.display='none'); }

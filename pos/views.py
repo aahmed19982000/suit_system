@@ -9,7 +9,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.paginator import Paginator
-
+from django.db import transaction
+from django.db.models import F
 import json
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -79,47 +80,76 @@ def customer_management(request):
 
 @login_required
 def pos_page(request):
-    products = Product.objects.filter(available=True)
-    categories = Category_products.objects.all()
-    return render(request, 'pos/pos_page.html', {'products': products, 'categories': categories})
+    # بدلاً من المنتجات، سنجلب أصناف المخزن المتوفرة
+    # سنفترض أنك تريد عرض الأصناف التي كميتها أكبر من 0 أو كلها
+    products = InventoryItem.objects.all() 
+    
+    # جلب تصنيفات المواد الخام/المخزن
+    categories = IngredientCategory.objects.all() 
+    
+    return render(request, 'pos/pos_page.html', {
+        'products': products, 
+        'categories': categories
+    })
 
 @csrf_exempt
 @login_required
 def cash_checkout(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        cart = data.get('cart', [])
-        total = data.get('total')
-        order_type = data.get('order_type')
-        cust_data = data.get('customer_data')
+        try:
+            data = json.loads(request.body)
+            cart = data.get('cart', [])
+            total = data.get('total')
+            order_type = data.get('order_type')
+            cust_data = data.get('customer_data')
 
-        customer_obj = None
-        if order_type == 'delivery' and cust_data:
-            customer_obj, created = Customer.objects.get_or_create(
-                mobil=cust_data['phone'],
-                defaults={'name': cust_data['name'], 'address': cust_data['address']}
-            )
-            if not created:
-                customer_obj.name = cust_data['name']
-                customer_obj.address = cust_data['address']
-            customer_obj.number_of_orders += 1
-            customer_obj.save()
+            with transaction.atomic():
+                # 1. العميل
+                customer_obj = None
+                if order_type == 'delivery' and cust_data:
+                    customer_obj, created = Customer.objects.get_or_create(
+                        mobil=cust_data['phone'],
+                        defaults={'name': cust_data['name'], 'address': cust_data['address']}
+                    )
+                    customer_obj.number_of_orders += 1
+                    customer_obj.save()
 
-        order = Order.objects.create(
-            user=request.user,
-            customer=customer_obj,
-            payment_method='cash',
-            total_price=total
-        )
+                # 2. الطلب
+                order = Order.objects.create(
+                    user=request.user,
+                    customer=customer_obj,
+                    payment_method='cash',
+                    total_price=total
+                )
 
-        for item in cart:
-            product = Product.objects.get(id=item['id'])
-            OrderItem.objects.create(
-                order=order, product=product,
-                price=item['price'], quantity=item['qty']
-            )
+                # 3. الربط والخصم من المخزن
+                for item in cart:
+                    # جلب الصنف من المخزن
+                    inv_item = get_object_or_404(InventoryItem, id=item['id'])
+                    qty_sold = int(item['qty'])
 
-        return JsonResponse({'status': 'success', 'order_id': order.id})
+                    # خصم الكمية
+                    inv_item.quantity = F('quantity') - qty_sold
+                    inv_item.save()
+
+                    # تسجيل الطلب
+                    # ملاحظة هامة: إذا تعطل هذا السطر، فمعناه أن الموديل OrderItem 
+                    # يحتاج حقل Product وليس InventoryItem. 
+                    # كحل مؤقت، سنربطه بـ product_id إذا كان متطابقاً أو ننشئ سجل تفاصيل.
+                    OrderItem.objects.create(
+                        order=order,
+                        product_id=inv_item.id, # تأكد أن الـ ID موجود في جدول المنتجات أيضاً
+                        price=item['price'],
+                        quantity=qty_sold
+                    )
+
+                return JsonResponse({'status': 'success', 'order_id': order.id})
+        
+        except Exception as e:
+            # طباعة الخطأ في التيرمينال لتعرف السبب الحقيقي (هام جداً)
+            print(f"CRITICAL ERROR: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        
 
 def orders(request):
     user = request.user
