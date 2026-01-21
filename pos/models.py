@@ -108,9 +108,7 @@ class InventoryItem(models.Model):
     profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الربح المتوقع", default=0)
     updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
     Supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="المورد", null=True, blank=True)
-    is_for_rental = models.BooleanField(default=False, verbose_name="متاح للإيجار؟")
-    is_available = models.BooleanField(default=True, verbose_name="متاح حالياً (غير محجوز)")
-
+   
     @property
     def total_value(self):
         return self.quantity * self.unit_cost
@@ -180,7 +178,14 @@ class OrderItem(models.Model):
     # التعديل هنا: نربطه بالمخزن بدلاً من Product
     product = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, verbose_name="الصنف")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="سعر البيع")
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الكمية") # Decimal لدعم الكسور
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الكمية")
+    rental_order = models.ForeignKey(
+        'RentalOrder',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="طلب إيجار"
+    ) 
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
@@ -212,6 +217,16 @@ class RentalOrder(models.Model):
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='booked')
     notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات (مقاسات، تعديلات)")
+    total_rentals = models.PositiveIntegerField(default=0, verbose_name="إجمالي مرات الإيجار")
+    total_profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="إجمالي الربح من الإيجار", default=0)
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="رقم الفاتورة"
+    )
 
     def __str__(self):
         return f"تأجير {self.item.name} - {self.customer.name}"

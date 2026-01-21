@@ -18,9 +18,9 @@ from decimal import Decimal, InvalidOperation
 # استيراد الموديلات
 from .models import (
     Product, Customer, Supplier, SupplyLog, Order, 
-    OrderItem, Status_order, InventoryItem, IngredientCategory
+    OrderItem, Status_order, InventoryItem, IngredientCategory ,RentalOrder
 )
-from .forms import ProductForm
+from .forms import ProductForm , RentalOrderForm
 from categories.models import Category_products, Unit_choices, Size_choices, Colors_choices
 from accounts.decorators import role_required
 
@@ -556,33 +556,3 @@ def delete_inventory_item(request):
         item.delete()
         return JsonResponse({'status': 'success'})
     
-
-@login_required
-def create_rental(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        try:
-            with transaction.atomic():
-                item = InventoryItem.objects.select_for_update().get(id=data['item_id'])
-                
-                if not item.is_available:
-                    return JsonResponse({'status': 'error', 'message': 'هذه البدلة محجوزة بالفعل'}, status=400)
-
-                # إنشاء عملية التأجير
-                rental = RentalOrder.objects.create(
-                    customer_id=data['customer_id'],
-                    item=item,
-                    rental_date=data['rental_date'],
-                    return_date=data['return_date'],
-                    total_price=data['price'],
-                    deposit_amount=data['deposit'],
-                    status='booked'
-                )
-
-                # تحديث حالة البدلة في المخزن
-                item.is_available = False
-                item.save()
-
-                return JsonResponse({'status': 'success', 'rental_id': rental.id})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
