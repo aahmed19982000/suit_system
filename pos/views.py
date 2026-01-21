@@ -292,10 +292,14 @@ def add_inventory_item(request):
         sup_phone = request.POST.get('supplier_phone_input')
         new_sup_name = request.POST.get('new_supplier_name')
 
+        # إنشاء المورد الجديد إذا لازم
         if not supplier_id and sup_phone and new_sup_name:
             supplier_obj, created = Supplier.objects.get_or_create(
                 mobil=sup_phone, defaults={'name': new_sup_name}
             )
+            if created:
+                supplier_obj.name = new_sup_name
+                supplier_obj.save()
             supplier_id = supplier_obj.id
 
         quantity = Decimal(request.POST.get('quantity') or 0)
@@ -315,20 +319,28 @@ def add_inventory_item(request):
             Supplier_id=supplier_id or None,
             size_id=request.POST.get('size') or None,
             color_id=request.POST.get('color') or None,
+            profit=Decimal(request.POST.get('profit') or 0),
+            is_rental=request.POST.get('is_rental') == 'on',
         )
 
         if item.Supplier and (total_amount > 0 or paid_amount > 0):
             SupplyLog.objects.create(
-                supplier=item.Supplier, item=item, quantity_added=quantity,
-                cost_at_time=supply_cost, total_amount=total_amount,
-                paid_amount=paid_amount, remaining_amount=remaining_amount
+                supplier=item.Supplier,
+                item=item,
+                quantity_added=quantity,
+                cost_at_time=supply_cost,
+                total_amount=total_amount,
+                paid_amount=paid_amount,
+                remaining_amount=remaining_amount
             )
 
         messages.success(request, 'تم إضافة الصنف وتحديث سجلات المورد.')
         return redirect('inventory_management')
+
     except Exception as e:
         messages.error(request, f'حدث خطأ: {str(e)}')
         return redirect('inventory_management')
+
 
 @require_POST
 def update_inventory_quantity(request):
@@ -556,3 +568,55 @@ def delete_inventory_item(request):
         item.delete()
         return JsonResponse({'status': 'success'})
     
+
+@require_POST
+def create_customer_ajax(request):
+    try:
+        data = json.loads(request.body)
+
+        customer = Customer.objects.create(
+            name=data.get('name'),
+            mobil=data.get('phone'),
+            address=data.get('address', '')
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'id': customer.id,
+            'name': customer.name
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+
+def pos_rental_page(request):
+    products = InventoryItem.objects.filter(is_rental=True, quantity__gt=0)
+    customers = Customer.objects.all()
+    return render(request, 'pos/rental_pos.html', {
+        'products': products,
+        'customers': customers
+    })
+
+@csrf_exempt
+def rental_checkout(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        customer = get_object_or_404(Customer, pk=data.get('customer_id'))
+        item = get_object_or_404(InventoryItem, pk=data.get('item_id'))
+
+        rental_order = RentalOrder.objects.create(
+            customer=customer,
+            item=item,
+            rental_date=datetime.strptime(data.get('rental_date'), "%Y-%m-%d").date(),
+            return_date=datetime.strptime(data.get('return_date'), "%Y-%m-%d").date(),
+            total_price=float(data.get('total_price')),
+            deposit_amount=float(data.get('deposit') or 0),
+            notes=data.get('notes', ''),
+            status='booked'
+        )
+        return JsonResponse({'status': 'success', 'rental_order_id': rental_order.id})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})

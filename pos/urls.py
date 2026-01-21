@@ -10,6 +10,7 @@ urlpatterns = [
     path('orders/', views.orders, name='orders'),
     path('customer-management/', views.customer_management, name='customer_management'),
     path('employees-management/', views.employees_management, name='employees_management'),
+    
 
     # --- 2. إدارة الموردين (دقيقة جداً - يجب أن تسبق الـ IDs العامة) ---
     path('supplies-management/', views.supplies_management, name='supplies_management'),
@@ -20,12 +21,18 @@ urlpatterns = [
     path('supplies-management/log/edit/<int:log_id>/', views.edit_supply_log, name='edit_supply_log'),
     path('supplies-management/delete/<int:pk>/', views.delete_supplier, name='delete_supplier'),
     path('check-supplier/', views.check_supplier_by_phone, name='check_supplier_by_phone'),
+    
 
     # --- 3. مسارات العمليات (POST) ---
     path('inventory/add/', views.add_inventory_item, name='add_inventory_item'),
     path('inventory/update/', views.update_inventory_quantity, name='update_inventory'),
     path('checkout/cash/', views.cash_checkout, name='cash_checkout'),
-    path('pos/search-customer/', views.search_customer, name='search_customer'),
+    path('rental/', views.pos_rental_page, name='pos_rental_page'),
+    path('rental/checkout/', views.rental_checkout, name='rental_checkout'),
+    path('create_customer_ajax/', views.create_customer_ajax, name='create_customer_ajax'),
+    path('search-customer/', views.search_customer, name='search_customer'),
+    
+    
 
     # --- 4. المسارات التي تبدأ بمتغير <int> (اجعلها في نهاية الملف دائماً) ---
     # إذا وضعت هذه في الأعلى، سيعتقد Django أن "supplies-management" هي order_id ويعطي 404
@@ -34,4 +41,6 @@ urlpatterns = [
     path('<int:order_id>/action/', views.process_order_action, name='process_order_action'),
     path('inventory/edit/', views.edit_inventory_item, name='edit_inventory_item'),
     path('inventory/delete/', views.delete_inventory_item, name='delete_inventory_item'),
+    
+
 ]

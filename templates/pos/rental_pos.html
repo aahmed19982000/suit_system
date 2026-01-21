@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}POS لتأجير البدل - كريم هريدي{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pos.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="pos-wrapper">
+    <section class="products-section">
+        <header class="pos-top-bar">
+            <h2>نظام تأجير البدل</h2>
+            <button class="btn-top-action btn-rental-trigger" onclick="openRentalModal()">👔 تأجير بدلة</button>
+        </header>
+    </section>
+
+    <aside class="cart-sidebar">
+        <div class="cart-items-container" id="cartItemsContainer">السلة فارغة</div>
+        <button class="check-btn" onclick="submitRental()">تأكيد التأجير 🖨️</button>
+    </aside>
+</div>
+
+<!-- مودال التأجير -->
+<div id="rentalModal" class="custom-modal">
+    <div class="modal-content">
+        <h3>تسجيل حجز تأجير</h3>
+
+        <label>اختر العميل:</label>
+        <select id="customerSelect" class="input-field">
+            {% for customer in customers %}
+                <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.phone }}</option>
+            {% endfor %}
+        </select>
+
+        <label>اختر البدلة:</label>
+        <select id="itemSelect" class="input-field">
+            {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }} ({{ product.quantity }} متاحة)</option>
+            {% endfor %}
+        </select>
+
+        <label>تاريخ الحجز/الخروج:</label>
+        <input type="date" id="rentalDate" class="input-field" value="{{ today|default:None }}">
+
+        <label>تاريخ العودة المتوقع:</label>
+        <input type="date" id="returnDate" class="input-field">
+
+        <label>سعر الإيجار:</label>
+        <input type="number" id="totalPrice" class="input-field">
+
+        <label>التأمين:</label>
+        <input type="number" id="deposit" class="input-field">
+
+        <label>ملاحظات:</label>
+        <textarea id="notes" class="input-field" placeholder="مقاسات، تعديلات..."></textarea>
+
+        <button class="modal-btn btn-confirm" onclick="closeRentalModal()">تم</button>
+    </div>
+</div>
+
+<script>
+function openRentalModal() { document.getElementById('rentalModal').style.display = 'flex'; }
+function closeRentalModal() { document.getElementById('rentalModal').style.display = 'none'; }
+
+function submitRental() {
+    const data = {
+        customer_id: document.getElementById('customerSelect').value,
+        item_id: document.getElementById('itemSelect').value,
+        rental_date: document.getElementById('rentalDate').value,
+        return_date: document.getElementById('returnDate').value,
+        total_price: document.getElementById('totalPrice').value,
+        deposit: document.getElementById('deposit').value,
+        notes: document.getElementById('notes').value
+    };
+
+    if (!data.customer_id || !data.item_id || !data.total_price || !data.rental_date || !data.return_date) {
+        return alert("اكمل جميع البيانات المطلوبة");
+    }
+
+    fetch("{% url 'rental_checkout' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.status === 'success') {
+            alert('تم تسجيل التأجير');
+            location.reload();
+        } else {
+            alert('حصل خطأ، حاول مرة أخرى');
+        }
+    });
+}
+</script>
+{% endblock %}

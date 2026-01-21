@@ -95,20 +95,52 @@ class Supplier(models.Model):
         return paid if paid else 0
 
 
+import uuid
+from django.db import models
+
 class InventoryItem(models.Model):
     name = models.CharField(max_length=200, verbose_name="اسم الصنف")
     category = models.ForeignKey(IngredientCategory, on_delete=models.CASCADE, related_name='items', verbose_name="الفئة")
-    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="الحجم", null=True, blank=True)
-    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون", null=True, blank=True)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الكمية الحالية")
-    min_limit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="حد الطلب (الحد الأدنى)")
+    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="الحجم")
+    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون")
+
+    quantity = models.PositiveIntegerField(verbose_name="الكمية الحالية")
+    min_limit = models.PositiveIntegerField(verbose_name="حد الطلب (الحد الأدنى)")
+
     unit = models.ForeignKey(Unit_choices, on_delete=models.CASCADE, verbose_name="الوحدة")
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="سعر الوحدة")
-    supply_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="تكلفة التوريد", default=0)
-    profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الربح المتوقع", default=0)
+    supply_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="تكلفة التوريد")
+    profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الربح المتوقع")
+
     updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
-    Supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="المورد", null=True, blank=True)
-   
+    Supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="المورد")
+
+    is_rental = models.BooleanField(default=False, verbose_name="هل الصنف للإيجار؟")
+
+    rental_code = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="كود الصنف"
+    )
+    total_rentals = models.PositiveIntegerField(default=0, verbose_name="إجمالي مرات الإيجار")
+    total_profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="إجمالي الربح من الإيجار", default=0)
+
+
+    def save(self, *args, **kwargs):
+        # لو الصنف إيجار
+        if self.is_rental:
+            # كود مميز
+            if not self.rental_code:
+                self.rental_code = f"RENT-{uuid.uuid4().hex[:12].upper()}"
+
+            # لو مش إيجار امسح الكود
+            self.rental_code = None
+
+        super().save(*args, **kwargs)
+
     @property
     def total_value(self):
         return self.quantity * self.unit_cost
@@ -119,6 +151,8 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return self.name
+
+    
 
 
 class SupplyLog(models.Model):
@@ -198,6 +232,9 @@ class OrderItem(models.Model):
 
 # في ملف models.py
 
+from django.core.exceptions import ValidationError
+from django.db import models
+
 class RentalOrder(models.Model):
     STATUS_CHOICES = (
         ('booked', 'محجوز'),
@@ -208,17 +245,16 @@ class RentalOrder(models.Model):
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="العميل")
     item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, verbose_name="البدلة")
+
     rental_date = models.DateField(verbose_name="تاريخ الحجز/الخروج")
     return_date = models.DateField(verbose_name="تاريخ العودة المتوقع")
     actual_return_date = models.DateField(null=True, blank=True, verbose_name="تاريخ العودة الفعلي")
-    
+
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="قيمة الإيجار")
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مبلغ التأمين")
-    
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='booked')
     notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات (مقاسات، تعديلات)")
-    total_rentals = models.PositiveIntegerField(default=0, verbose_name="إجمالي مرات الإيجار")
-    total_profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="إجمالي الربح من الإيجار", default=0)
 
     order = models.ForeignKey(
         Order,
@@ -227,6 +263,36 @@ class RentalOrder(models.Model):
         blank=True,
         verbose_name="رقم الفاتورة"
     )
+
+    def clean(self):
+        # منع إيجار صنف مش إيجار
+        if not self.item.is_rental:
+            raise ValidationError("هذا الصنف غير متاح للإيجار")
+
+        # منع الحجز لو مفيش قطع
+        if self.pk is None and self.item.quantity <= 0:
+            raise ValidationError("لا توجد قطع متاحة للإيجار")
+
+    def save(self, *args, **kwargs):
+        old_status = None
+        if self.pk:
+            old_status = RentalOrder.objects.get(pk=self.pk).status
+
+        super().save(*args, **kwargs)
+
+        # عند الاستلام → خصم قطعة
+        if self.status == 'picked_up' and old_status != 'picked_up':
+            if self.item.quantity <= 0:
+                raise ValidationError("لا توجد قطع متاحة للإيجار")
+            self.item.quantity -= 1
+            self.item.total_rentals += 1
+            self.item.total_profit += self.total_price
+            self.item.save()
+
+        # عند الترجيع → إضافة قطعة
+        if self.status == 'returned' and old_status != 'returned':
+            self.item.quantity += 1
+            self.item.save()
 
     def __str__(self):
         return f"تأجير {self.item.name} - {self.customer.name}"
