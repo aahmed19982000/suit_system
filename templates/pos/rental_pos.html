@@ -4,140 +4,172 @@
 {% block title %}POS لتأجير البدل - كريم هريدي{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pos.css' %}">
+<link rel="stylesheet" href="{% static 'css/pos_rental.css' %}">
 {% endblock %}
 
 {% block content %}
 <div class="pos-wrapper">
     <section class="products-section">
         <header class="pos-top-bar">
-            <h2>البدل المتاحة للإيجار</h2>
-            <button class="btn-top-action btn-rental-trigger" onclick="openRentalModal()">👔 تأجير بدلة</button>
+            <h2><i class="fas fa-suit"></i> البدل المتاحة</h2>
+            <input type="text" id="posSearch" placeholder="بحث باسم البدلة..." onkeyup="filterItems()">
         </header>
-    
-        <div class="products-grid">
+
+        <div class="products-layout" id="productsGrid">
             {% for product in products %}
-                <div class="product-card">
+                <div class="product-item" data-name="{{ product.name|lower }}">
                     <div class="product-icon">👔</div>
-                    <h4 class="product-name">{{ product.name }}</h4>
-                    <p class="product-qty">المتاح: {{ product.quantity }}</p>
-    
-                    <button class="btn-rent"
-                            onclick="openRentalModal({{ product.id }})">
-                        تأجير
-                    </button>
+                    <div class="product-title">{{ product.name }}</div>
+                    <div class="product-qty">المخزون: {{ product.quantity }}</div>
+                    <button class="btn-rent-action" onclick="openModal({{ product.id }})">تأجير البدلة</button>
                 </div>
             {% empty %}
-                <p class="no-products">لا توجد بدل متاحة للإيجار</p>
+                <div class="cart-empty-state" style="grid-column: 1/-1;">لا توجد أصناف متاحة</div>
             {% endfor %}
         </div>
     </section>
-    
 
     <aside class="cart-sidebar">
-        <div class="cart-items-container" id="cartItemsContainer">السلة فارغة</div>
-        <button class="check-btn" onclick="submitRental()">تأكيد التأجير 🖨️</button>
+        <div class="cart-header">
+            <h3>تفاصيل الحجز</h3>
+        </div>
+        <div class="cart-empty-state">
+            <i class="fas fa-clipboard-list" style="font-size: 4rem; margin-bottom: 1rem;"></i>
+            <p>اختر بدلة لبدء الحجز</p>
+        </div>
+        <button class="check-btn" onclick="openModal()">+ حجز يدوي جديد</button>
     </aside>
 </div>
 
-<!-- مودال التأجير -->
-<div id="rentalModal" class="custom-modal">
+<div id="rentalModal" class="modal-overlay">
     <div class="modal-content">
-        <h3>تسجيل حجز تأجير</h3>
+        <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 20px;">تسجيل عملية تأجير</h3>
+        
+        <label>العميل:</label>
+        <div style="display: flex; gap: 8px;">
+            <select id="customerSelect" class="input-field">
+                <option value="">-- اختر العميل --</option>
+                {% for customer in customers %}
+                    <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.phone }})</option>
+                {% endfor %}
+            </select>
+            <button onclick="toggleNewCustomer()" style="height: 45px; width: 50px; background: var(--accent-gold); color: white; border: none; border-radius: 10px; cursor: pointer;">+</button>
+        </div>
 
-        <label>اختر العميل:</label>
-        <select id="customerSelect" class="input-field">
-            {% for customer in customers %}
-                <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.phone }}</option>
-            {% endfor %}
-        </select>
+        <div id="newCustomerForm" class="quick-add-customer" style="display: none;">
+            <input type="text" id="ncName" placeholder="اسم العميل الجديد" class="input-field">
+            <input type="text" id="ncPhone" placeholder="رقم الموبايل" class="input-field">
+            <button class="btn-confirm-modal" style="background: #27272a;" onclick="createNewCustomer()">حفظ العميل</button>
+        </div>
 
-        <label>اختر البدلة:</label>
+        <label>البدلة:</label>
         <select id="itemSelect" class="input-field">
             {% for product in products %}
-                <option value="{{ product.id }}">{{ product.name }} ({{ product.quantity }} متاحة)</option>
+                <option value="{{ product.id }}">{{ product.name }}</option>
             {% endfor %}
         </select>
 
-        <label>تاريخ الحجز/الخروج:</label>
-        <input type="date" id="rentalDate" class="input-field" value="{{ today|default:None }}">
+        <div class="form-row">
+            <div>
+                <label>تاريخ الخروج:</label>
+                <input type="date" id="rDate" class="input-field" value="{% now 'Y-m-d' %}">
+            </div>
+            <div>
+                <label>تاريخ العودة:</label>
+                <input type="date" id="retDate" class="input-field">
+            </div>
+        </div>
 
-        <label>تاريخ العودة المتوقع:</label>
-        <input type="date" id="returnDate" class="input-field">
+        <div class="form-row">
+            <div>
+                <label>السعر:</label>
+                <input type="number" id="tPrice" class="input-field" placeholder="0.00">
+            </div>
+            <div>
+                <label>التأمين:</label>
+                <input type="number" id="tDeposit" class="input-field" placeholder="0.00">
+            </div>
+        </div>
 
-        <label>سعر الإيجار:</label>
-        <input type="number" id="totalPrice" class="input-field">
+        <label>ملاحظات (مقاسات، تعديلات):</label>
+        <textarea id="rNotes" class="input-field" style="height: 70px; resize: none; padding: 10px;" placeholder="اكتب الملاحظات هنا..."></textarea>
 
-        <label>التأمين:</label>
-        <input type="number" id="deposit" class="input-field">
-
-        <label>ملاحظات:</label>
-        <textarea id="notes" class="input-field" placeholder="مقاسات، تعديلات..."></textarea>
-
-        <button class="modal-btn btn-confirm" onclick="closeRentalModal()">تم</button>
+        <button class="btn-confirm-modal" onclick="submitBooking()">تأكيد العملية 🖨️</button>
+        <button onclick="closeModal()" style="width: 100%; background: none; color: var(--text-muted); border: none; margin-top: 10px; cursor: pointer;">إلغاء</button>
     </div>
 </div>
 
 <script>
-    /* فتح المودال
-       لو اتبعت itemId → يحدد البدلة تلقائي
-       لو لا → يفتح عادي زي قبل */
-    function openRentalModal(itemId = null) {
+    function openModal(id = null) {
         document.getElementById('rentalModal').style.display = 'flex';
-    
-        if (itemId !== null) {
-            const itemSelect = document.getElementById('itemSelect');
-            itemSelect.value = itemId;
-        }
+        if(id) document.getElementById('itemSelect').value = id;
     }
-    
-    function closeRentalModal() {
+
+    function closeModal() {
         document.getElementById('rentalModal').style.display = 'none';
+        document.getElementById('newCustomerForm').style.display = 'none';
     }
-    
-    function submitRental() {
-        const data = {
-            customer_id: document.getElementById('customerSelect').value,
-            item_id: document.getElementById('itemSelect').value,
-            rental_date: document.getElementById('rentalDate').value,
-            return_date: document.getElementById('returnDate').value,
-            total_price: document.getElementById('totalPrice').value,
-            deposit: document.getElementById('deposit').value,
-            notes: document.getElementById('notes').value
-        };
-    
-        if (
-            !data.customer_id ||
-            !data.item_id ||
-            !data.total_price ||
-            !data.rental_date ||
-            !data.return_date
-        ) {
-            alert("اكمل جميع البيانات المطلوبة");
-            return;
-        }
-    
-        fetch("{% url 'rental_checkout' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(res => res.json())
-        .then(resp => {
-            if (resp.status === 'success') {
-                alert('تم تسجيل التأجير');
-                location.reload();
-            } else {
-                alert('حصل خطأ، حاول مرة أخرى');
-            }
-        })
-        .catch(() => {
-            alert('حصل خطأ في الاتصال بالسيرفر');
+
+    function toggleNewCustomer() {
+        const form = document.getElementById('newCustomerForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function filterItems() {
+        const q = document.getElementById('posSearch').value.toLowerCase();
+        document.querySelectorAll('.product-item').forEach(item => {
+            item.style.display = item.dataset.name.includes(q) ? 'block' : 'none';
         });
     }
-    </script>
-    
+
+    // إنشاء عميل جديد AJAX
+    async function createNewCustomer() {
+        const name = document.getElementById('ncName').value;
+        const phone = document.getElementById('ncPhone').value;
+        if(!name || !phone) return alert("أكمل بيانات العميل");
+
+        const res = await fetch("{% url 'create_customer_ajax' %}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify({ name, phone })
+        });
+        const data = await res.json();
+        if(data.status === 'success') {
+            const sel = document.getElementById('customerSelect');
+            sel.add(new Option(data.name, data.id));
+            sel.value = data.id;
+            toggleNewCustomer();
+        }
+    }
+
+    // إرسال الحجز بكافة المدخلات
+    async function submitBooking() {
+        const payload = {
+            customer_id: document.getElementById('customerSelect').value,
+            item_id: document.getElementById('itemSelect').value,
+            rental_date: document.getElementById('rDate').value,
+            return_date: document.getElementById('retDate').value,
+            total_price: document.getElementById('tPrice').value,
+            deposit: document.getElementById('tDeposit').value,
+            notes: document.getElementById('rNotes').value, // إضافة الملاحظات
+        };
+
+        if(!payload.customer_id || !payload.item_id || !payload.return_date) {
+            return alert("يرجى اختيار العميل، البدلة، وتاريخ العودة");
+        }
+
+        const res = await fetch("{% url 'rental_checkout' %}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if(data.status === 'success') {
+            alert('تم الحجز بنجاح');
+            location.reload();
+        } else {
+            alert('خطأ: ' + (data.message || 'لم يتم الحفظ'));
+        }
+    }
+</script>
 {% endblock %}

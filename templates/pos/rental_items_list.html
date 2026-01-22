@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}كتالوج بدل الإيجار{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/rental_items.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="rental-container">
+    <header class="page-header">
+        <h2><i class="fas fa-suit"></i> كتالوج بدل الإيجار</h2>
+        
+        <div class="search-wrapper">
+            <input type="text" id="suitSearch" placeholder="ابحث باسم البدلة..." onkeyup="filterSuits()">
+        </div>
+    </header>
+
+    <div class="inventory-grid" id="suitGrid">
+        {% for item in items %}
+        <div class="item-card" data-name="{{ item.name|lower }}">
+            {% if item.quantity > 0 %}
+                <span class="status-badge available">متاح</span>
+            {% else %}
+                <span class="status-badge out-of-stock">غير متوفر</span>
+            {% endif %}
+
+            <div class="item-body">
+                <span class="suit-title">{{ item.name }}</span>
+                
+                <div class="suit-details">
+                    <div class="detail-item">
+                        <span>الكمية المتاحة:</span>
+                        <span>{{ item.quantity }} قطع</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>القسم:</span>
+                        <span>إيجار</span>
+                    </div>
+                </div>
+
+                <div class="item-body">
+                    <span class="suit-title">{{ item.name }}</span>
+                    
+                    <div class="suit-details">
+                        <div class="detail-item">
+                            <span>الكمية المتاحة:</span>
+                            <span>{{ item.quantity }} قطع</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>الحالة:</span>
+                            <span>{% if item.quantity > 0 %}متوفر{% else %}نفذ من المخزن{% endif %}</span>
+                        </div>
+                    </div>
+                
+                    <div class="price-box">
+                        {{ item.price|default:"0.00" }} ج.م
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <a href="#">التفاصيل</a>
+                <a href="{% url 'pos_rental_page' %}" class="btn-rent">تأجير البدلة</a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: var(--text-gray);">
+            <h3>لا توجد بدل متاحة في هذا القسم حالياً</h3>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    function filterSuits() {
+        const input = document.getElementById('suitSearch').value.toLowerCase();
+        const cards = document.querySelectorAll('.item-card');
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name');
+            if (name.includes(input)) {
+                card.style.display = "flex";
+            } else {
+                card.style.display = "none";
+            }
+        });
+    }
+</script>
+{% endblock %}

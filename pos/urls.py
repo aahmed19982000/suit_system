@@ -31,6 +31,7 @@ urlpatterns = [
     path('rental/checkout/', views.rental_checkout, name='rental_checkout'),
     path('create_customer_ajax/', views.create_customer_ajax, name='create_customer_ajax'),
     path('search-customer/', views.search_customer, name='search_customer'),
+    path('rental_items/', views.all_rental_items, name='all_rental_items'),  
     
     
 

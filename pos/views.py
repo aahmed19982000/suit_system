@@ -594,29 +594,67 @@ def create_customer_ajax(request):
 
 
 def pos_rental_page(request):
+    # جلب العناصر المتاحة للإيجار فقط والتي بها مخزون
     products = InventoryItem.objects.filter(is_rental=True, quantity__gt=0)
-    customers = Customer.objects.all()
+    customers = Customer.objects.all().order_by('-id') # ترتيب الأحدث أولاً
     return render(request, 'pos/rental_pos.html', {
         'products': products,
         'customers': customers
     })
 
-@csrf_exempt
 def rental_checkout(request):
     if request.method == "POST":
-        data = json.loads(request.body)
-        customer = get_object_or_404(Customer, pk=data.get('customer_id'))
-        item = get_object_or_404(InventoryItem, pk=data.get('item_id'))
+        try:
+            data = json.loads(request.body)
+            
+            # 1. التأكد من وجود البيانات الأساسية
+            customer_id = data.get('customer_id')
+            item_id = data.get('item_id')
+            if not customer_id or not item_id:
+                return JsonResponse({'status': 'error', 'message': 'بيانات العميل أو البدلة ناقصة'}, status=400)
 
-        rental_order = RentalOrder.objects.create(
-            customer=customer,
-            item=item,
-            rental_date=datetime.strptime(data.get('rental_date'), "%Y-%m-%d").date(),
-            return_date=datetime.strptime(data.get('return_date'), "%Y-%m-%d").date(),
-            total_price=float(data.get('total_price')),
-            deposit_amount=float(data.get('deposit') or 0),
-            notes=data.get('notes', ''),
-            status='booked'
-        )
-        return JsonResponse({'status': 'success', 'rental_order_id': rental_order.id})
-    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+            customer = get_object_or_404(Customer, pk=customer_id)
+            item = get_object_or_404(InventoryItem, pk=item_id)
+
+            # 2. تحويل وتجهيز الأرقام مع التعامل مع القيم الفارغة
+            total_price = float(data.get('total_price') or 0)
+            deposit_amount = float(data.get('deposit') or 0)
+
+            # 3. تحويل التواريخ
+            rental_date = datetime.strptime(data.get('rental_date'), "%Y-%m-%d").date()
+            return_date = datetime.strptime(data.get('return_date'), "%Y-%m-%d").date()
+
+            # 4. إنشاء سجل الحجز
+            rental_order = RentalOrder.objects.create(
+                customer=customer,
+                item=item,
+                rental_date=rental_date,
+                return_date=return_date,
+                total_price=total_price,
+                deposit_amount=deposit_amount,
+                notes=data.get('notes', ''),
+                status='booked'
+            )
+
+            # 5. (اختياري) تحديث الكمية في المخزن
+            # item.quantity -= 1
+            # item.save()
+
+            return JsonResponse({
+                'status': 'success', 
+                'rental_order_id': rental_order.id,
+                'message': 'تم الحجز بنجاح'
+            })
+
+        except ValueError:
+            return JsonResponse({'status': 'error', 'message': 'خطأ في تنسيق البيانات الرقمية أو التواريخ'}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'طلب غير صالح'}, status=405)
+
+
+def all_rental_items(request):
+    # جلب العناصر المخصصة للإيجار فقط
+    items = InventoryItem.objects.filter(is_rental=True).order_by('-id')
+    return render(request, 'pos/rental_items_list.html', {'items': items})
