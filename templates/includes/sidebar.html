@@ -22,7 +22,13 @@
                 <li>
                     <a href="{% url 'pos_page' %}" class="{% if request.resolver_match.url_name == 'pos_page' %}active{% endif %}">
                         <span class="icon">📋</span>
-                        <span class="text">انشاء طلب</span>
+                        <span class="text">انشاء طلب بيع</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'pos_rental_page' %}" class="{% if request.resolver_match.url_name == 'pos_rental_page' %}active{% endif %}">
+                        <span class="icon">📋</span>
+                        <span class="text">انشاء طلب تاجير</span>
                     </a>
                 </li>
 
