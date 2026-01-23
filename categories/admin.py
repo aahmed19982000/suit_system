@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Site, Article_type_U_N ,Article_type_W_R_A_B, Official_holiday, CustomHoliday, contract_details, contract_duration ,Category_products , Status_order , Unit_choices,IngredientCategory ,Size_choices ,Colors_choices
+from .models import Site, Article_type_U_N ,Article_type_W_R_A_B, Official_holiday, CustomHoliday, contract_details, contract_duration ,Category_products , Status_order , Unit_choices,IngredientCategory ,Size_choices ,Colors_choices, Rental_status_choices
 class SiteAdmin(admin.ModelAdmin):
     list_display = ['name','number_of_days','start_date','site_link']
 
@@ -55,3 +55,8 @@ class Size_choicesAdmin(admin.ModelAdmin):
 @admin.register(Colors_choices)
 class Colors_choicesAdmin(admin.ModelAdmin):
     list_display = ['color']
+
+
+@admin.register(Rental_status_choices)
+class Rental_status_choicesAdmin(admin.ModelAdmin):
+    list_display = ['status']

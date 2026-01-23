@@ -1,7 +1,8 @@
 from django.db import models
-from categories.models import Category_products ,Status_order , Unit_choices ,IngredientCategory , Size_choices , Colors_choices
+from categories.models import Category_products ,Status_order , Unit_choices ,IngredientCategory , Size_choices , Colors_choices , Rental_status_choices
 from django.conf import settings
 from django.db.models import Sum
+import uuid
 
 class Product(models.Model):
     name = models.CharField(max_length=100, verbose_name="اسم المنتج")
@@ -128,18 +129,29 @@ class InventoryItem(models.Model):
     total_rentals = models.PositiveIntegerField(default=0, verbose_name="إجمالي مرات الإيجار")
     total_profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="إجمالي الربح من الإيجار", default=0)
 
-
     def save(self, *args, **kwargs):
-        # لو الصنف إيجار
+        creating = self.pk is None
+        super().save(*args, **kwargs)
+
+        # إدارة كود الصنف للإيجار
         if self.is_rental:
-            # كود مميز
             if not self.rental_code:
                 self.rental_code = f"RENT-{uuid.uuid4().hex[:12].upper()}"
+                super().save(update_fields=['rental_code'])
 
-            # لو مش إيجار امسح الكود
-            self.rental_code = None
-
-        super().save(*args, **kwargs)
+            # إنشاء سجلات RentalItem لكل قطعة حسب الكمية
+            from .models import RentalItem
+            existing_count = RentalItem.objects.filter(item=self).count()
+            needed = self.quantity - existing_count
+            for _ in range(needed):
+                RentalItem.objects.create(item=self)
+        else:
+            # لو مش إيجار امسح الكود واحذف RentalItem
+            if self.rental_code:
+                self.rental_code = None
+                super().save(update_fields=['rental_code'])
+            from .models import RentalItem
+            RentalItem.objects.filter(item=self).delete()
 
     @property
     def total_value(self):
@@ -151,6 +163,7 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return self.name
+
 
     
 
@@ -232,44 +245,27 @@ class OrderItem(models.Model):
 
 # في ملف models.py
 
+
 from django.core.exceptions import ValidationError
-from django.db import models
+
 
 class RentalOrder(models.Model):
-    STATUS_CHOICES = (
-        ('booked', 'محجوز'),
-        ('picked_up', 'تم الاستلام'),
-        ('returned', 'تم الترجيع'),
-        ('late', 'متأخر'),
-    )
 
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="العميل")
+
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE, verbose_name="العميل")
     item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, verbose_name="البدلة")
-
     rental_date = models.DateField(verbose_name="تاريخ الحجز/الخروج")
     return_date = models.DateField(verbose_name="تاريخ العودة المتوقع")
     actual_return_date = models.DateField(null=True, blank=True, verbose_name="تاريخ العودة الفعلي")
-
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="قيمة الإيجار")
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مبلغ التأمين")
-
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='booked')
+    status = models.ForeignKey(Rental_status_choices, on_delete=models.CASCADE, verbose_name="حالة البدلة", null=True, blank=True, default=1)
     notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات (مقاسات، تعديلات)")
-
-    order = models.ForeignKey(
-        Order,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="رقم الفاتورة"
-    )
+    order = models.ForeignKey('Order', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="رقم الفاتورة")
 
     def clean(self):
-        # منع إيجار صنف مش إيجار
         if not self.item.is_rental:
             raise ValidationError("هذا الصنف غير متاح للإيجار")
-
-        # منع الحجز لو مفيش قطع
         if self.pk is None and self.item.quantity <= 0:
             raise ValidationError("لا توجد قطع متاحة للإيجار")
 
@@ -280,19 +276,60 @@ class RentalOrder(models.Model):
 
         super().save(*args, **kwargs)
 
-        # عند الاستلام → خصم قطعة
+        # عند الاستلام
         if self.status == 'picked_up' and old_status != 'picked_up':
-            if self.item.quantity <= 0:
+            available_rental = RentalItem.objects.filter(
+                item=self.item,
+                status__name="متاحة"
+            ).first()
+
+            if not available_rental:
                 raise ValidationError("لا توجد قطع متاحة للإيجار")
+
+            # تحديث قطعة الإيجار
+            available_rental.status = Rental_status_choices.objects.get(name="مستأجرة")
+            available_rental.rental_count += 1
+            available_rental.profit += self.total_price
+            available_rental.save()
+
+            # تحديث الصنف الأساسي
             self.item.quantity -= 1
             self.item.total_rentals += 1
             self.item.total_profit += self.total_price
             self.item.save()
 
-        # عند الترجيع → إضافة قطعة
+        # عند الإرجاع
         if self.status == 'returned' and old_status != 'returned':
+            rented_item = RentalItem.objects.filter(
+                item=self.item,
+                status__name="مستأجرة"
+            ).first()
+
+            if rented_item:
+                rented_item.status = Rental_status_choices.objects.get(name="متاحة")
+                rented_item.save()
+
             self.item.quantity += 1
             self.item.save()
 
+
+
     def __str__(self):
         return f"تأجير {self.item.name} - {self.customer.name}"
+
+
+
+class RentalItem(models.Model):
+    UID = models.CharField(max_length=50, unique=True, verbose_name="كود البدلة", editable=False)
+    item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, verbose_name="البدلة")
+    rental_count = models.PositiveIntegerField(default=0, verbose_name="عدد مرات الإيجار")
+    profit = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="الربح من الإيجار")
+    status = models.ForeignKey(Rental_status_choices, on_delete=models.CASCADE, verbose_name="حالة البدلة", null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.UID:
+            self.UID = f"RENT-{uuid.uuid4().hex[:12].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.item.name} - {self.UID}"

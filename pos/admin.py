@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Order, OrderItem ,InventoryItem , RentalOrder
+from .models import Product, Order, OrderItem ,InventoryItem , RentalOrder , RentalItem
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'price', 'available')  # الأعمدة اللي تظهر في القائمة
@@ -55,3 +55,30 @@ class RentalOrderAdmin(admin.ModelAdmin):
         'customer__name',
         'item__name',
     )
+
+@admin.register(RentalItem)
+class RentalItemAdmin(admin.ModelAdmin):
+    list_display = (
+        'item',
+        'UID',
+        'status',
+        'rental_count',
+        'profit',
+        'is_available',  # property
+    )
+
+    list_filter = (
+        'status',
+        'item',
+    )
+
+    search_fields = (
+        'UID',
+        'item__name',
+    )
+
+    # تعريف property للـ availability
+    def is_available(self, obj):
+        return obj.status is None
+    is_available.boolean = True  # يظهر كصح/خطأ
+    is_available.short_description = "متاحة للإيجار"

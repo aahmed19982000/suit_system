@@ -1,149 +1,228 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}POS لتأجير البدل - كريم هريدي{% endblock %}
+{% block title %}نظام POS - كـريم هـريدي{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pos_rental.css' %}">
+<style>
+    /* تحسينات سريعة لضمان عمل المودال بشكل صحيح */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(5px);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+    .quick-add-customer { display: none; margin-top: 10px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; }
+    .quick-add-customer.active { display: block; animation: slideDown 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="pos-wrapper">
     <section class="products-section">
         <header class="pos-top-bar">
-            <h2><i class="fas fa-suit"></i> البدل المتاحة</h2>
-            <input type="text" id="posSearch" placeholder="بحث باسم البدلة..." onkeyup="filterItems()">
+            <div class="title-area">
+                <h2><i class="fas fa-suit"></i> البدل المتاحة</h2>
+                <span class="badge" id="productCount">{{ products|length }} صنف</span>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="posSearch" placeholder="ابحث باسم البدلة..." onkeyup="filterItems()">
+            </div>
         </header>
 
         <div class="products-layout" id="productsGrid">
             {% for product in products %}
-                <div class="product-item" data-name="{{ product.name|lower }}">
+                <div class="product-item" data-name="{{ product.name|lower }}" onclick="openModal({{ product.id }})">
+                    <div class="product-status {% if product.quantity > 0 %}instock{% else %}outofstock{% endif %}"></div>
                     <div class="product-icon">👔</div>
-                    <div class="product-title">{{ product.name }}</div>
-                    <div class="product-qty">المخزون: {{ product.quantity }}</div>
-                    <button class="btn-rent-action" onclick="openModal({{ product.id }})">تأجير البدلة</button>
+                    <div class="product-info">
+                        <span class="product-title">{{ product.name }}</span>
+                        <span class="product-qty">المخزون: <strong>{{ product.quantity }}</strong></span>
+                    </div>
+                    <button class="btn-quick-rent"><i class="fas fa-plus"></i></button>
                 </div>
             {% empty %}
-                <div class="cart-empty-state" style="grid-column: 1/-1;">لا توجد أصناف متاحة</div>
+                <div class="cart-empty-state" style="grid-column: 1/-1;">لا توجد أصناف متاحة حالياً</div>
             {% endfor %}
         </div>
     </section>
 
     <aside class="cart-sidebar">
         <div class="cart-header">
-            <h3>تفاصيل الحجز</h3>
+            <h3><i class="fas fa-clipboard-check"></i> تفاصيل العملية</h3>
         </div>
-        <div class="cart-empty-state">
-            <i class="fas fa-clipboard-list" style="font-size: 4rem; margin-bottom: 1rem;"></i>
-            <p>اختر بدلة لبدء الحجز</p>
+        <div class="cart-content-area">
+            <div class="empty-notif">
+                <i class="fas fa-tshirt" style="font-size: 3rem; color: var(--accent-gold); opacity: 0.3;"></i>
+                <p>قم باختيار بدلة من القائمة لبدء تسجيل الحجز</p>
+            </div>
         </div>
-        <button class="check-btn" onclick="openModal()">+ حجز يدوي جديد</button>
+        <button class="check-btn" onclick="openModal()">
+            <i class="fas fa-plus-circle"></i> حجز يدوي جديد
+        </button>
     </aside>
 </div>
 
 <div id="rentalModal" class="modal-overlay">
     <div class="modal-content">
-        <h3 style="color: var(--accent-gold); margin-top: 0; margin-bottom: 20px;">تسجيل عملية تأجير</h3>
+        <div class="modal-header">
+            <h3><i class="fas fa-file-invoice-dollar"></i> تسجيل عملية تأجير</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
         
-        <label>العميل:</label>
-        <div style="display: flex; gap: 8px;">
-            <select id="customerSelect" class="input-field">
-                <option value="">-- اختر العميل --</option>
-                {% for customer in customers %}
-                    <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.phone }})</option>
-                {% endfor %}
-            </select>
-            <button onclick="toggleNewCustomer()" style="height: 45px; width: 50px; background: var(--accent-gold); color: white; border: none; border-radius: 10px; cursor: pointer;">+</button>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>العميل:</label>
+                <div class="input-flex">
+                    <select id="customerSelect" class="input-field">
+                        <option value="">-- اختر العميل من المسجلين --</option>
+                        {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.phone }})</option>
+                        {% endfor %}
+                    </select>
+                    <button class="add-btn" onclick="toggleNewCustomer()" title="إضافة عميل جديد">+</button>
+                </div>
+            </div>
+
+            <div id="newCustomerForm" class="quick-add-customer">
+                <div class="form-row">
+                    <input type="text" id="ncName" placeholder="اسم العميل الجديد" class="input-field">
+                    <input type="text" id="ncPhone" placeholder="رقم الموبايل" class="input-field">
+                </div>
+                <button class="btn-save-customer" onclick="createNewCustomer()">حفظ العميل</button>
+            </div>
+
+            <div class="form-group">
+                <label>البدلة المختارة:</label>
+                <select id="itemSelect" class="input-field">
+                    <option value="">-- اختر البدلة --</option>
+                    {% for product in products %}
+                        <option value="{{ product.id }}">{{ product.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>تاريخ الخروج:</label>
+                    <input type="date" id="rDate" class="input-field" value="{% now 'Y-m-d' %}">
+                </div>
+                <div class="form-group">
+                    <label>تاريخ العودة:</label>
+                    <input type="date" id="retDate" class="input-field">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>قيمة الإيجار:</label>
+                    <input type="number" id="tPrice" class="input-field" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>مبلغ التأمين:</label>
+                    <input type="number" id="tDeposit" class="input-field" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات التعديلات والمقاسات:</label>
+                <textarea id="rNotes" class="input-field" style="height: 80px; resize: none;" placeholder="اكتب الملاحظات هنا (مثلاً: تقصير الكم، تضييق الوسط)..."></textarea>
+            </div>
         </div>
 
-        <div id="newCustomerForm" class="quick-add-customer" style="display: none;">
-            <input type="text" id="ncName" placeholder="اسم العميل الجديد" class="input-field">
-            <input type="text" id="ncPhone" placeholder="رقم الموبايل" class="input-field">
-            <button class="btn-confirm-modal" style="background: #27272a;" onclick="createNewCustomer()">حفظ العميل</button>
+        <div class="modal-footer">
+            <button class="btn-confirm-modal" id="submitBtn" onclick="submitBooking()">
+                <span>تأكيد العملية وطباعة</span> <i class="fas fa-print"></i>
+            </button>
         </div>
-
-        <label>البدلة:</label>
-        <select id="itemSelect" class="input-field">
-            {% for product in products %}
-                <option value="{{ product.id }}">{{ product.name }}</option>
-            {% endfor %}
-        </select>
-
-        <div class="form-row">
-            <div>
-                <label>تاريخ الخروج:</label>
-                <input type="date" id="rDate" class="input-field" value="{% now 'Y-m-d' %}">
-            </div>
-            <div>
-                <label>تاريخ العودة:</label>
-                <input type="date" id="retDate" class="input-field">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div>
-                <label>السعر:</label>
-                <input type="number" id="tPrice" class="input-field" placeholder="0.00">
-            </div>
-            <div>
-                <label>التأمين:</label>
-                <input type="number" id="tDeposit" class="input-field" placeholder="0.00">
-            </div>
-        </div>
-
-        <label>ملاحظات (مقاسات، تعديلات):</label>
-        <textarea id="rNotes" class="input-field" style="height: 70px; resize: none; padding: 10px;" placeholder="اكتب الملاحظات هنا..."></textarea>
-
-        <button class="btn-confirm-modal" onclick="submitBooking()">تأكيد العملية 🖨️</button>
-        <button onclick="closeModal()" style="width: 100%; background: none; color: var(--text-muted); border: none; margin-top: 10px; cursor: pointer;">إلغاء</button>
     </div>
 </div>
 
 <script>
+    // --- وظائف التحكم في النافذة (Modal) ---
     function openModal(id = null) {
-        document.getElementById('rentalModal').style.display = 'flex';
+        const modal = document.getElementById('rentalModal');
+        modal.classList.add('active');
         if(id) document.getElementById('itemSelect').value = id;
     }
 
     function closeModal() {
-        document.getElementById('rentalModal').style.display = 'none';
-        document.getElementById('newCustomerForm').style.display = 'none';
+        document.getElementById('rentalModal').classList.remove('active');
+        document.getElementById('newCustomerForm').classList.remove('active');
     }
 
     function toggleNewCustomer() {
-        const form = document.getElementById('newCustomerForm');
-        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('newCustomerForm').classList.toggle('active');
     }
 
+    // --- فلترة المنتجات ---
     function filterItems() {
         const q = document.getElementById('posSearch').value.toLowerCase();
-        document.querySelectorAll('.product-item').forEach(item => {
-            item.style.display = item.dataset.name.includes(q) ? 'block' : 'none';
+        const items = document.querySelectorAll('.product-item');
+        let count = 0;
+
+        items.forEach(item => {
+            const match = item.dataset.name.includes(q);
+            item.style.display = match ? 'flex' : 'none';
+            if(match) count++;
         });
+        document.getElementById('productCount').innerText = `${count} صنف`;
     }
 
-    // إنشاء عميل جديد AJAX
+    // --- التعامل مع الـ AJAX ---
+    async function apiRequest(url, payload) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    // إنشاء عميل جديد
     async function createNewCustomer() {
         const name = document.getElementById('ncName').value;
         const phone = document.getElementById('ncPhone').value;
-        if(!name || !phone) return alert("أكمل بيانات العميل");
+        const btn = event.target;
 
-        const res = await fetch("{% url 'create_customer_ajax' %}", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-            body: JSON.stringify({ name, phone })
-        });
-        const data = await res.json();
-        if(data.status === 'success') {
-            const sel = document.getElementById('customerSelect');
-            sel.add(new Option(data.name, data.id));
-            sel.value = data.id;
-            toggleNewCustomer();
+        if(!name || !phone) return alert("يرجى إكمال بيانات العميل");
+
+        btn.disabled = true;
+        btn.innerText = "جاري الحفظ...";
+
+        try {
+            const data = await apiRequest("{% url 'create_customer_ajax' %}", { name, phone });
+            if(data.status === 'success') {
+                const sel = document.getElementById('customerSelect');
+                const opt = new Option(`${data.name} (${phone})`, data.id, true, true);
+                sel.add(opt);
+                toggleNewCustomer();
+                document.getElementById('ncName').value = '';
+                document.getElementById('ncPhone').value = '';
+            }
+        } catch (e) {
+            alert("فشل في حفظ العميل");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "حفظ العميل";
         }
     }
 
-    // إرسال الحجز بكافة المدخلات
+    // إرسال الحجز النهائي
     async function submitBooking() {
+        const submitBtn = document.getElementById('submitBtn');
         const payload = {
             customer_id: document.getElementById('customerSelect').value,
             item_id: document.getElementById('itemSelect').value,
@@ -151,25 +230,35 @@
             return_date: document.getElementById('retDate').value,
             total_price: document.getElementById('tPrice').value,
             deposit: document.getElementById('tDeposit').value,
-            notes: document.getElementById('rNotes').value, // إضافة الملاحظات
+            notes: document.getElementById('rNotes').value,
         };
 
         if(!payload.customer_id || !payload.item_id || !payload.return_date) {
-            return alert("يرجى اختيار العميل، البدلة، وتاريخ العودة");
+            return alert("يرجى اختيار العميل والبدلة وتاريخ العودة");
         }
 
-        const res = await fetch("{% url 'rental_checkout' %}", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if(data.status === 'success') {
-            alert('تم الحجز بنجاح');
-            location.reload();
-        } else {
-            alert('خطأ: ' + (data.message || 'لم يتم الحفظ'));
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+        try {
+            const data = await apiRequest("{% url 'rental_checkout' %}", payload);
+            if(data.status === 'success') {
+                alert('✅ تم تسجيل الحجز بنجاح');
+                location.reload();
+            } else {
+                alert('❌ خطأ: ' + (data.message || 'فشل الحفظ'));
+            }
+        } catch (e) {
+            alert("فشل في الاتصال بالسيرفر");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>تأكيد العملية وطباعة</span> <i class="fas fa-print"></i>';
         }
+    }
+
+    // إغلاق المودال عند الضغط خارجه
+    window.onclick = function(e) {
+        if (e.target.classList.contains('modal-overlay')) closeModal();
     }
 </script>
 {% endblock %}

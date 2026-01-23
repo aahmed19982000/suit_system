@@ -655,6 +655,13 @@ def rental_checkout(request):
 
 
 def all_rental_items(request):
-    # جلب العناصر المخصصة للإيجار فقط
-    items = InventoryItem.objects.filter(is_rental=True).order_by('-id')
+    # جلب العناصر مع الحفاظ على مسمى items كما هو في طلبك
+    items = RentalOrder.objects.select_related('customer', 'item', 'order').all().order_by('-id')
     return render(request, 'pos/rental_items_list.html', {'items': items})
+
+def update_rental_status(request, pk):
+    if request.method == 'POST':
+        rental = get_object_or_404(RentalOrder, pk=pk)
+        rental.status = request.POST.get('status')
+        rental.save()
+    return redirect('all_rental_items')

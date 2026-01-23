@@ -6,6 +6,9 @@
     --transition: all 0.3s ease;
 }
 
+/* تنسيق الحاوية الخلفية */
+body { background-color: var(--dark-bg); color: white; }
+
 .rental-container {
     padding: 30px;
     direction: rtl;
@@ -27,13 +30,8 @@
 }
 
 /* صندوق البحث */
-.search-wrapper {
-    position: relative;
-    width: 300px;
-}
-
 .search-wrapper input {
-    width: 100%;
+    width: 300px;
     padding: 10px 15px;
     background: var(--card-bg);
     border: 1px solid #444;
@@ -48,109 +46,60 @@
     box-shadow: 0 0 8px rgba(197, 160, 89, 0.2);
 }
 
-/* شبكة عرض البدلات */
-.inventory-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 25px;
-}
-
-.item-card {
+/* تنسيق الجدول الاحترافي */
+.rental-table-container {
     background: var(--card-bg);
-    border-radius: 15px;
+    border-radius: 12px;
     overflow: hidden;
     border: 1px solid #444;
-    transition: var(--transition);
-    position: relative;
-    display: flex;
-    flex-direction: column;
 }
 
-.item-card:hover {
-    transform: translateY(-8px);
-    border-color: var(--gold);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    color: white;
 }
 
-/* شارات الحالة */
-.status-badge {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    z-index: 2;
-}
-
-.available { background: #28a745; color: white; }
-.out-of-stock { background: #dc3545; color: white; }
-
-/* معلومات البدلة */
-.item-body {
-    padding: 20px;
-    flex-grow: 1;
-}
-
-.suit-title {
-    display: block;
-    font-size: 1.25rem;
+.table thead {
+    background: rgba(197, 160, 89, 0.15);
     color: var(--gold);
-    margin-bottom: 15px;
-    font-weight: bold;
 }
 
-.suit-details {
-    margin-bottom: 15px;
+.table th {
+    padding: 15px;
+    text-align: right;
+    border-bottom: 2px solid var(--gold);
+    font-size: 0.95rem;
 }
 
-.detail-item {
-    display: flex;
-    justify-content: space-between;
+.table td {
+    padding: 15px;
+    border-bottom: 1px solid #444;
+    font-size: 0.9rem;
     color: var(--text-gray);
-    margin-bottom: 8px;
-    font-size: 0.9rem;
 }
 
-.price-box {
-    background: rgba(197, 160, 89, 0.1);
-    border: 1px dashed var(--gold);
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
+.table tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.table tr strong { color: white; }
+
+/* تنسيق القائمة المنسدلة (Dropdown) */
+.status-dropdown {
+    background: var(--dark-bg);
     color: white;
-    font-size: 1.2rem;
-    font-weight: bold;
-}
-
-/* أزرار التحكم */
-.card-footer {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: #444;
-}
-
-.card-footer a, .card-footer button {
-    background: #252525;
-    color: white;
-    border: none;
-    padding: 12px;
-    text-align: center;
-    text-decoration: none;
-    font-size: 0.9rem;
+    border: 1px solid #555;
+    padding: 5px 10px;
+    border-radius: 5px;
     cursor: pointer;
-    transition: var(--transition);
+    outline: none;
 }
 
-.card-footer a:hover {
-    background: var(--gold);
-    color: black;
-}
+.status-dropdown:focus { border-color: var(--gold); }
 
-.btn-rent {
-    background: var(--gold) !important;
-    color: black !important;
-    font-weight: bold;
-}
+/* ألوان الحالة المخصصة */
+.status-booked { color: #ffc107; border-right: 3px solid #ffc107; }
+.status-picked_up { color: #17a2b8; border-right: 3px solid #17a2b8; }
+.status-returned { color: #28a745; border-right: 3px solid #28a745; }
+.status-late { color: #dc3545; border-right: 3px solid #dc3545; }

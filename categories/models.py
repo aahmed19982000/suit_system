@@ -98,3 +98,9 @@ class Colors_choices(models.Model):
     color = models.CharField (max_length=100, verbose_name="الالوان المتاحة للمنتج")
     def __str__(self):
         return self.color
+    
+
+class Rental_status_choices(models.Model):
+    status = models.CharField (max_length=100, verbose_name="حالة ايجار المنتج")
+    def __str__(self):
+        return self.status
