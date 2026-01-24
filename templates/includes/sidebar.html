@@ -25,11 +25,26 @@
                         <span class="text">انشاء طلب بيع</span>
                     </a>
                 </li>
-                <li>
-                    <a href="{% url 'pos_rental_page' %}" class="{% if request.resolver_match.url_name == 'pos_rental_page' %}active{% endif %}">
-                        <span class="icon">📋</span>
-                        <span class="text">انشاء طلب تاجير</span>
+                <li class="menu-item-dropdown">
+                    <a href="javascript:void(0)" class="dropdown-trigger {% if 'rental' in request.path %}active{% endif %}" onclick="toggleDropdown(this)">
+                        <span class="icon">🔄</span>
+                        <span class="text">قسم الإيجار</span>
+                        <span class="arrow">▼</span>
                     </a>
+                    <ul class="submenu">
+                        <li>
+                            <a href="{% url 'pos_rental_page' %}" class="{% if request.resolver_match.url_name == 'pos_rental_page' %}active{% endif %}">
+                                <span class="icon">➕</span>
+                                <span class="text">إنشاء طلب تأجير</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/pos/rental_items/" class="{% if '/pos/rental_items/' in request.path %}active{% endif %}">
+                                <span class="icon">📜</span>
+                                <span class="text">سجل التأجير</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 <li>

@@ -1,10 +1,26 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}كتالوج بدل الإيجار{% endblock %}
+{% block title %}سجل طلبات الإيجار{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/rental_items.css' %}">
+<style>
+    /* إضافات بسيطة لتعزيز المظهر دون تضارب مع ملفك */
+    .status-dropdown {
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        font-family: 'Cairo', sans-serif;
+    }
+    /* ألوان الحالة بناءً على النص الموجود في قاعدة البيانات */
+    .row-محجوز { border-right: 5px solid #ffc107; }
+    .row-نفذه { border-right: 5px solid #17a2b8; }
+    .row-متوفر { border-right: 5px solid #28a745; }
+    .row-متأخر { border-right: 5px solid #dc3545; }
+    
+    .notes-tooltip { cursor: help; color: #6c757d; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -12,7 +28,7 @@
     <header class="page-header d-flex justify-content-between align-items-center">
         <h2><i class="fas fa-suit"></i> سجل طلبات الإيجار</h2>
         <div class="search-wrapper">
-            <input type="text" id="suitSearch" placeholder="ابحث باسم العميل أو البدلة..." onkeyup="filterOrders()">
+            <input type="text" id="suitSearch" placeholder="ابحث باسم العميل، البدلة، أو الكود..." onkeyup="filterOrders()">
         </div>
     </header>
 
@@ -20,40 +36,65 @@
         <table class="table" id="suitTable">
             <thead>
                 <tr>
-                    <th>رقم الفاتورة</th>
                     <th>العميل</th>
-                    <th>البدلة</th>
+                    <th>البدلة (UID)</th>
                     <th>تاريخ الحجز</th>
                     <th>تاريخ العودة</th>
                     <th>قيمة الإيجار</th>
                     <th>التأمين</th>
                     <th>الحالة</th>
+                    <th>ملاحظات</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr class="item-row status-border-{{ item.status }}" data-name="{{ item.customer.name|lower }} {{ item.item.name|lower }}">
-                    <td>{{ item.order.id|default:"---" }}</td>
-                    <td><strong>{{ item.customer.name }}</strong></td>
-                    <td>{{ item.item.name }}</td>
+                <tr class="item-row row-{{ item.status.status }}" 
+                    data-name="{{ item.customer.name|lower }} {{ item.item.item.name|lower }} {{ item.item.UID|lower }}">                    
+                    <td>
+                        <strong>{{ item.customer.name }}</strong>
+                        <br><small>{{ item.customer.mobil }}</small>
+                    </td>
+                    
+                    <td>
+                        {{ item.item.item.name }}
+                        <br><small class="text-muted">{{ item.item.UID }}</small>
+                    </td>
+                    
                     <td>{{ item.rental_date|date:"Y-m-d" }}</td>
-                    <td>{{ item.return_date|date:"Y-m-d" }}</td>
+                    
+                    <td class="{% if item.status.status == 'متأخر' %}text-danger fw-bold{% endif %}">
+                        {{ item.return_date|date:"Y-m-d" }}
+                    </td>
+                    
                     <td>{{ item.total_price }} ج.م</td>
                     <td>{{ item.deposit_amount }} ج.م</td>
+                    
                     <td>
                         <form method="POST" action="{% url 'update_rental_status' item.id %}">
                             {% csrf_token %}
-                            <select name="status" class="status-dropdown select-{{ item.status }}" onchange="this.form.submit()">
-                                {% for value, text in item.STATUS_CHOICES %}
-                                    <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ text }}</option>
+                            <select name="status_id" class="status-dropdown" onchange="this.form.submit()">
+                                {% for status_choice in all_statuses %}
+                                    <option value="{{ status_choice.id }}" {% if item.status.id == status_choice.id %}selected{% endif %}>
+                                        {{ status_choice.status }}
+                                    </option>
                                 {% endfor %}
                             </select>
                         </form>
                     </td>
+
+                    <td>
+                        {% if item.notes %}
+                            <span class="notes-tooltip" title="{{ item.notes }}">
+                                <i class="fas fa-comment-dots"></i>
+                            </span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-5">لا توجد سجلات متاحة حالياً</td>
+                    <td colspan="9" class="text-center py-5">لا توجد سجلات متاحة حالياً</td>
                 </tr>
                 {% endfor %}
             </tbody>

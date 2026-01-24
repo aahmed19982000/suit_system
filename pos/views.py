@@ -18,10 +18,10 @@ from decimal import Decimal, InvalidOperation
 # استيراد الموديلات
 from .models import (
     Product, Customer, Supplier, SupplyLog, Order, 
-    OrderItem, Status_order, InventoryItem, IngredientCategory ,RentalOrder
+    OrderItem, Status_order, InventoryItem, IngredientCategory ,RentalOrder ,RentalItem
 )
 from .forms import ProductForm , RentalOrderForm
-from categories.models import Category_products, Unit_choices, Size_choices, Colors_choices
+from categories.models import Category_products, Unit_choices, Size_choices, Colors_choices ,Rental_status_choices
 from accounts.decorators import role_required
 
 User = get_user_model()
@@ -30,6 +30,9 @@ User = get_user_model()
 
 def search_customer(request):
     phone = request.GET.get('phone')
+    if not phone:
+        return JsonResponse({'found': False, 'message': 'رقم الهاتف مطلوب'})
+        
     customer = Customer.objects.filter(mobil=phone).first()
     if customer:
         return JsonResponse({
@@ -38,6 +41,7 @@ def search_customer(request):
             'name': customer.name,
             'address': customer.address
         })
+    # إذا لم يوجد، نرسل False لكي يفتح الـ POS حقل إدخال الاسم الجديد
     return JsonResponse({'found': False})
 
 def customer_management(request):
@@ -596,72 +600,129 @@ def create_customer_ajax(request):
 def pos_rental_page(request):
     # جلب العناصر المتاحة للإيجار فقط والتي بها مخزون
     products = InventoryItem.objects.filter(is_rental=True, quantity__gt=0)
-    customers = Customer.objects.all().order_by('-id') # ترتيب الأحدث أولاً
+    customers = Customer.objects.all().order_by('-id') 
+    sizes = Size_choices.objects.all()
+    colors = Colors_choices.objects.all()
     return render(request, 'pos/rental_pos.html', {
         'products': products,
-        'customers': customers
+        'customers': customers,
+        'sizes': sizes,
+        'colors': colors
     })
 
+@transaction.atomic
 def rental_checkout(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            
-            # 1. التأكد من وجود البيانات الأساسية
+            phone = data.get('phone')
             customer_id = data.get('customer_id')
-            item_id = data.get('item_id')
-            if not customer_id or not item_id:
-                return JsonResponse({'status': 'error', 'message': 'بيانات العميل أو البدلة ناقصة'}, status=400)
-
-            customer = get_object_or_404(Customer, pk=customer_id)
-            item = get_object_or_404(InventoryItem, pk=item_id)
-
-            # 2. تحويل وتجهيز الأرقام مع التعامل مع القيم الفارغة
-            total_price = float(data.get('total_price') or 0)
-            deposit_amount = float(data.get('deposit') or 0)
-
-            # 3. تحويل التواريخ
-            rental_date = datetime.strptime(data.get('rental_date'), "%Y-%m-%d").date()
-            return_date = datetime.strptime(data.get('return_date'), "%Y-%m-%d").date()
-
-            # 4. إنشاء سجل الحجز
-            rental_order = RentalOrder.objects.create(
+            
+            # 1. معالجة العميل (موجود أو جديد)
+            if customer_id:
+                # إذا كان العميل مسجلاً مسبقاً
+                customer = Customer.objects.get(id=customer_id)
+            else:
+                # إذا كان العميل جديداً، نقوم بإنشائه باستخدام الاسم والعنوان المدخلين
+                customer, created = Customer.objects.get_or_create(
+                    mobil=phone,
+                    defaults={
+                        'name': data.get('customer_name'),
+                        'address': data.get('customer_address', 'غير محدد')
+                    }
+                )
+            
+            # 2. جلب البدلة (RentalItem)
+            rental_item = RentalItem.objects.get(UID=data.get('uid'))
+            
+            # 3. إنشاء طلب الحجز (RentalOrder) بناءً على أسماء الحقول الدقيقة في الموديل
+            order = RentalOrder.objects.create(
                 customer=customer,
-                item=item,
-                rental_date=rental_date,
-                return_date=return_date,
-                total_price=total_price,
-                deposit_amount=deposit_amount,
-                notes=data.get('notes', ''),
-                status='booked'
+                item=rental_item,
+                rental_date=data.get('rental_date'),
+                return_date=data.get('return_date'),
+                # استخدام _id للتعامل مع المفاتيح الأجنبية مباشرة من البيانات القادمة
+                size_id=data.get('size_id'), 
+                color_id=data.get('color_id'),
+                # التأكد من كتابة اسم الحقل كما هو في الموديل (pantsـsize)
+                pantsـsize=data.get('pants_size'), 
+                total_price=data.get('total_price'),
+                # تم تغيير deposit إلى deposit_amount لحل خطأ "unexpected keyword argument"
+                deposit_amount=data.get('deposit_amount'), 
+                notes=data.get('notes')
             )
-
-            # 5. (اختياري) تحديث الكمية في المخزن
-            # item.quantity -= 1
-            # item.save()
-
-            return JsonResponse({
-                'status': 'success', 
-                'rental_order_id': rental_order.id,
-                'message': 'تم الحجز بنجاح'
-            })
-
-        except ValueError:
-            return JsonResponse({'status': 'error', 'message': 'خطأ في تنسيق البيانات الرقمية أو التواريخ'}, status=400)
+            
+            return JsonResponse({'status': 'success', 'message': 'تم تسجيل الحجز بنجاح'})
+            
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-    return JsonResponse({'status': 'error', 'message': 'طلب غير صالح'}, status=405)
-
+            # طباعة الخطأ في Terminal السيرفر للمساعدة في التشخيص
+            print(f"Checkout Error: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': f"فشل الحفظ: {str(e)}"}, status=400)
+        
 
 def all_rental_items(request):
-    # جلب العناصر مع الحفاظ على مسمى items كما هو في طلبك
-    items = RentalOrder.objects.select_related('customer', 'item', 'order').all().order_by('-id')
-    return render(request, 'pos/rental_items_list.html', {'items': items})
+    # 1. جلب الطلبات مع تحسين الأداء باستخدام select_related
+    # لاحظ أننا أضفنا 'item__item' للوصول لبيانات المخزن الأساسية وأضفنا 'status'
+    items = RentalOrder.objects.select_related('customer', 'item__item',  'status').all().order_by('-id')
+    
+    # 2. جلب جميع الحالات المتاحة لإظهارها في الـ Select داخل الصفحة
+    all_statuses = Rental_status_choices.objects.all()
+    
+    return render(request, 'pos/rental_items_list.html', {
+        'items': items,
+        'all_statuses': all_statuses  # هذه ضرورية جداً للقائمة المنسدلة
+    })
 
 def update_rental_status(request, pk):
     if request.method == 'POST':
         rental = get_object_or_404(RentalOrder, pk=pk)
-        rental.status = request.POST.get('status')
-        rental.save()
+        
+        # 3. جلب الـ ID الخاص بالحالة من الـ POST
+        status_id = request.POST.get('status_id') # تأكد أن الاسم مطابق للـ name في الـ HTML
+        
+        if status_id:
+            # 4. جلب كائن الحالة الفعلي وتعيينه للطلب
+            new_status = get_object_or_404(Rental_status_choices, pk=status_id)
+            rental.status = new_status
+            rental.save() # هنا سيعمل الـ Signal تلقائياً لتحديث المخزن والأرباح
+            
     return redirect('all_rental_items')
+
+
+def search_UID(request):
+    uid = request.GET.get('uid')
+    if not uid:
+        return JsonResponse({'found': False, 'message': 'كود البدلة مطلوب'})
+    
+    try:
+        # البحث عن القطعة وربطها ببيانات المخزن (InventoryItem) فوراً
+        rental_item = RentalItem.objects.select_related('item', 'item__size', 'item__color').filter(UID=uid).first()
+        
+        if not rental_item:
+            return JsonResponse({'found': False, 'message': 'هذا الكود غير موجود'})
+
+        # الوصول لبيانات المخزن التي أرسلتها لي في الكود السابق
+        inventory_data = rental_item.item
+        
+        # التأكد من حالة الحجز
+        is_reserved = False
+        try:
+            status_obj = Rental_status_choices.objects.filter(status__icontains="محجوز").first()
+            if status_obj:
+                is_reserved = RentalOrder.objects.filter(item=rental_item, status=status_obj).exists()
+        except:
+            pass
+
+        return JsonResponse({
+            'found': True,
+            'name': inventory_data.name if inventory_data else "بدون اسم",
+            # جلب المقاس واللون من InventoryItem (الجدول الأب)
+            'size': inventory_data.size.id if inventory_data and inventory_data.size else '',
+            'color': inventory_data.color.id if inventory_data and inventory_data.color else '',
+            'is_reserved': is_reserved
+        })
+
+    except Exception as e:
+        # طباعة الخطأ في شاشة السيرفر (CMD/Terminal) لمعرفته بالتحديد
+        print(f"--- خطأ في البحث: {str(e)} ---")
+        return JsonResponse({'found': False, 'message': str(e)}, status=500)

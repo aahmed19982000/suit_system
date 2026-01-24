@@ -22,6 +22,7 @@ urlpatterns = [
     path('supplies-management/delete/<int:pk>/', views.delete_supplier, name='delete_supplier'),
     path('check-supplier/', views.check_supplier_by_phone, name='check_supplier_by_phone'),
     
+    
 
     # --- 3. مسارات العمليات (POST) ---
     path('inventory/add/', views.add_inventory_item, name='add_inventory_item'),
@@ -31,6 +32,7 @@ urlpatterns = [
     path('rental/checkout/', views.rental_checkout, name='rental_checkout'),
     path('create_customer_ajax/', views.create_customer_ajax, name='create_customer_ajax'),
     path('search-customer/', views.search_customer, name='search_customer'),
+    path('search-uid/', views.search_UID, name='search_UID'),
     path('rental_items/', views.all_rental_items, name='all_rental_items'),  
     path('rental_items/update_status/<int:pk>/', views.update_rental_status, name='update_rental_status'),
     

@@ -66,9 +66,7 @@ class InventoryItem(models.Model):
     Supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="المورد")
     is_rental = models.BooleanField(default=False, verbose_name="هل الصنف للإيجار؟")
     rental_code = models.CharField(max_length=20, unique=True, null=True, blank=True, editable=False, verbose_name="كود الصنف")
-    total_rentals = models.PositiveIntegerField(default=0, verbose_name="إجمالي مرات الإيجار")
-    total_profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="إجمالي الربح من الإيجار", default=0)
-
+   
     def save(self, *args, **kwargs):
         # حفظ الأساس أولاً
         super().save(*args, **kwargs)
@@ -160,12 +158,14 @@ class RentalOrder(models.Model):
     item = models.ForeignKey(RentalItem, on_delete=models.CASCADE, verbose_name="البدلة")
     rental_date = models.DateField(verbose_name="تاريخ الحجز/الخروج")
     return_date = models.DateField(verbose_name="تاريخ العودة المتوقع")
+    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="المقاس")
+    pantsـsize= models.CharField(max_length=50, verbose_name="مقاس البنطلون")
+    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون")
     actual_return_date = models.DateField(null=True, blank=True, verbose_name="تاريخ العودة الفعلي")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="قيمة الإيجار")
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مبلغ التأمين")
     status = models.ForeignKey(Rental_status_choices, on_delete=models.CASCADE, verbose_name="حالة البدلة", null=True, blank=True, default=1)
     notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات (مقاسات، تعديلات)")
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="رقم الفاتورة")
 
     def clean(self):
         inventory_item = self.item.item
@@ -173,6 +173,22 @@ class RentalOrder(models.Model):
             raise ValidationError("هذا الصنف غير متاح للإيجار")
         if self.pk is None and inventory_item.quantity <= 0:
             raise ValidationError("لا توجد قطع متاحة للإيجار حالياً")
+        
+        try:
+            reserved_status = Rental_status_choices.objects.get(status="محجوز")
+        except Rental_status_choices.DoesNotExist:
+            return  # لو الحالة مش موجودة، منوقفش النظام
+
+        is_reserved = RentalOrder.objects.filter(
+            item=self.item,
+            status=reserved_status
+        ).exclude(pk=self.pk).exists()
+
+        if is_reserved:
+            raise ValidationError("هذه البدلة محجوزة بالفعل ولا يمكن حجزها مرة أخرى")
+        
+            
+
 
     # ملاحظة: دالة save محذوفة من هنا لأن المنطق انتقل لـ signals.py
 
