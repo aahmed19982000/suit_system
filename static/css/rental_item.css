@@ -1,0 +1,116 @@
+/* مخصص لصفحة سجل قطع الإيجار */
+
+.main-content-section {
+    padding: 1.5rem;
+    width: 100%;
+    overflow-y: auto;
+    background: var(--bg-dark);
+}
+
+/* الإحصائيات */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    background: var(--card-dark);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.stat-label { color: var(--text-muted); font-size: 0.9rem; }
+.stat-value { font-size: 1.8rem; font-weight: 800; color: var(--accent-gold); }
+
+.highlight-blue .stat-value { color: var(--accent-blue); }
+.highlight-green .stat-value { color: var(--accent-green); }
+
+/* الفلاتر */
+.filter-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 20px;
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: 20px;
+    text-decoration: none;
+    transition: 0.3s;
+    font-size: 0.85rem;
+}
+
+.filter-btn.active, .filter-btn:hover {
+    background: var(--accent-gold);
+    color: #000;
+    border-color: var(--accent-gold);
+}
+
+/* الجدول */
+.table-card {
+    background: var(--card-dark);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: right;
+}
+
+.custom-table th {
+    background: var(--surface-dark);
+    padding: 1.2rem;
+    color: var(--accent-gold);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.custom-table td {
+    padding: 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.uid-tag {
+    font-family: monospace;
+    background: #000;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--accent-blue);
+}
+
+.profit-text {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+/* بادج الحالة */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    background: var(--surface-dark);
+}
+
+/* يمكنك تخصيص ألوان حسب ID الحالة */
+.status-1 { color: var(--accent-green); border: 1px solid var(--accent-green); } /* متاح */
+.status-2 { color: #facc15; border: 1px solid #facc15; } /* مؤجر */
+
+.empty-msg {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--text-muted);
+}

@@ -618,47 +618,57 @@ def rental_checkout(request):
             phone = data.get('phone')
             customer_id = data.get('customer_id')
             
-            # 1. معالجة العميل (موجود أو جديد)
+            # 1. معالجة العميل
             if customer_id:
-                # إذا كان العميل مسجلاً مسبقاً
                 customer = Customer.objects.get(id=customer_id)
             else:
-                # إذا كان العميل جديداً، نقوم بإنشائه باستخدام الاسم والعنوان المدخلين
+                # التأكد من وجود رقم هاتف قبل الإنشـاء
+                if not phone:
+                    return JsonResponse({'status': 'error', 'message': 'رقم الهاتف مطلوب للعميل الجديد'}, status=400)
+                
                 customer, created = Customer.objects.get_or_create(
                     mobil=phone,
                     defaults={
-                        'name': data.get('customer_name'),
+                        'name': data.get('customer_name', 'عميل غير مسجل'),
                         'address': data.get('customer_address', 'غير محدد')
                     }
                 )
             
-            # 2. جلب البدلة (RentalItem)
+            # 2. جلب البدلة
             rental_item = RentalItem.objects.get(UID=data.get('uid'))
             
-            # 3. إنشاء طلب الحجز (RentalOrder) بناءً على أسماء الحقول الدقيقة في الموديل
+            # 3. تحويل القيم المالية لضمان عدم حدوث خطأ Unsupported Operand
+            # نستخدم str() ثم Decimal() لضمان التحويل الصحيح من JSON
+            t_price = Decimal(str(data.get('total_price') or 0))
+            d_amount = Decimal(str(data.get('deposit_amount') or 0))
+
+            # 4. إنشاء طلب الحجز
             order = RentalOrder.objects.create(
-                customer=customer,
-                item=rental_item,
-                rental_date=data.get('rental_date'),
-                return_date=data.get('return_date'),
-                # استخدام _id للتعامل مع المفاتيح الأجنبية مباشرة من البيانات القادمة
-                size_id=data.get('size_id'), 
-                color_id=data.get('color_id'),
-                # التأكد من كتابة اسم الحقل كما هو في الموديل (pantsـsize)
-                pantsـsize=data.get('pants_size'), 
-                total_price=data.get('total_price'),
-                # تم تغيير deposit إلى deposit_amount لحل خطأ "unexpected keyword argument"
-                deposit_amount=data.get('deposit_amount'), 
-                notes=data.get('notes')
-            )
+                    customer=customer,
+                    item=rental_item,
+                    rental_date=data.get('rental_date'),
+                    return_date=data.get('return_date'),
+                    size_id=data.get('size_id'), 
+                    color_id=data.get('color_id'),
+                    # التعديل هنا: استخدم حرف الكشيدة (ـ) المطابق للموديل في الطرف الأيمن
+                    pantsـsize=data.get('pants_size'), 
+                    total_price=t_price,
+                    deposit_amount=d_amount, 
+                    status_id=2,  
+                    notes=data.get('notes')
+                )
             
-            return JsonResponse({'status': 'success', 'message': 'تم تسجيل الحجز بنجاح'})
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'تم تسجيل الحجز بنجاح',
+                'order_id': order.id
+            })
             
+        except RentalItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'كود البدلة غير صحيح'}, status=404)
         except Exception as e:
-            # طباعة الخطأ في Terminal السيرفر للمساعدة في التشخيص
             print(f"Checkout Error: {str(e)}")
-            return JsonResponse({'status': 'error', 'message': f"فشل الحفظ: {str(e)}"}, status=400)
-        
+            return JsonResponse({'status': 'error', 'message': f"فشل الحفظ: {str(e)}"}, status=400)        
 
 def all_rental_items(request):
     # 1. جلب الطلبات مع تحسين الأداء باستخدام select_related
@@ -726,3 +736,39 @@ def search_UID(request):
         # طباعة الخطأ في شاشة السيرفر (CMD/Terminal) لمعرفته بالتحديد
         print(f"--- خطأ في البحث: {str(e)} ---")
         return JsonResponse({'found': False, 'message': str(e)}, status=500)
+    
+
+
+
+def rental_items_list(request):
+    items = RentalItem.objects.all().select_related('item', 'status')
+
+    # البحث (بالاسم أو الـ UID)
+    search_query = request.GET.get('search')
+    if search_query:
+        # استخدم Q مباشرة بعد استيرادها
+        items = items.filter(
+            Q(item__name__icontains=search_query) | 
+            Q(UID__icontains=search_query)
+        )
+
+    # الفلترة بالحالة
+    status_filter = request.GET.get('status')
+    if status_filter and status_filter.isdigit():
+        items = items.filter(status_id=status_filter)
+
+    # الإحصائيات
+    stats = {
+        'total_items': items.count(),
+        'total_rentals': items.aggregate(Sum('rental_count'))['rental_count__sum'] or 0,
+        'total_profit': items.aggregate(Sum('profit'))['profit__sum'] or 0,
+    }
+
+    statuses = Rental_status_choices.objects.all()
+
+    # تأكد أن هذا المسار هو نفس مكان ملف الـ HTML
+    return render(request, 'pos/rental_items.html', {
+        'items': items,
+        'stats': stats,
+        'statuses': statuses,
+    })

@@ -261,10 +261,9 @@ async function submitBooking() {
         rental_date: document.getElementById('rDate').value,
         return_date: document.getElementById('retDate').value,
         total_price: document.getElementById('tPrice').value,
-        // تغيير الاسم ليتطابق مع الـ View المحدث
-        deposit_amount: document.getElementById('tDeposit').value, 
+        deposit_amount: document.getElementById('tDeposit').value, // مطابق للموديل
         notes: document.getElementById('rNotes').value,
-        pants_size: document.getElementById('pantsSize').value,
+        pants_size: document.getElementById('pantsSize').value, // الاسم الصحيح بدون كشيدة
     };
 
     if (!payload.phone || !payload.uid || !payload.return_date) {

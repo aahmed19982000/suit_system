@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}سجل قطع الإيجار - كـريم هـريدي{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/rental_item.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="pos-wrapper">
+    <section class="main-content-section">
+        <header class="pos-top-bar">
+            <div class="title-area">
+                <h2><i class="fas fa-boxes"></i> سجل قطع الإيجار</h2>
+                <span class="badge">{{ items|length }} قطعة مسجلة</span>
+            </div>
+            
+            <form method="GET" class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" placeholder="ابحث بالكود أو اسم البدلة..." value="{{ request.GET.search }}">
+            </form>
+        </header>
+
+        <div class="stats-container">
+            <div class="stat-item">
+                <span class="stat-label">إجمالي البدل</span>
+                <span class="stat-value">{{ stats.total_items }}</span>
+            </div>
+            <div class="stat-item highlight-blue">
+                <span class="stat-label">إجمالي مرات الإيجار</span>
+                <span class="stat-value">{{ stats.total_rentals }}</span>
+            </div>
+            <div class="stat-item highlight-green">
+                <span class="stat-label">إجمالي الأرباح</span>
+                <span class="stat-value">{{ stats.total_profit }} <small>ج.م</small></span>
+            </div>
+        </div>
+
+        <div class="filter-tabs">
+            <a href="?status=" class="filter-btn {% if not request.GET.status %}active{% endif %}">الكل</a>
+            {% for s in statuses %}
+            <a href="?status={{ s.id }}" class="filter-btn {% if request.GET.status == s.id|stringformat:'i' %}active{% endif %}">
+                {{ s.status }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="table-card">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>كود UID</th>
+                        <th>البدلة</th>
+                        <th>عدد الإيجارات</th>
+                        <th>الربح المحقق</th>
+                        <th>الحالة الحالية</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><span class="uid-tag">{{ item.UID }}</span></td>
+                        <td><strong>{{ item.item.name }}</strong></td>
+                        <td>{{ item.rental_count }} مرات</td>
+                        <td class="profit-text">{{ item.profit }} ج.م</td>
+                        <td>
+                            <span class="status-badge status-{{ item.status.id }}">
+                                {{ item.status.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty-msg">لا توجد بيانات متاحة حالياً</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
