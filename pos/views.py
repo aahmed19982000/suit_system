@@ -697,32 +697,107 @@ def rental_checkout(request):
   
 
 def all_rental_items(request):
-    # 1. جلب الطلبات مع تحسين الأداء باستخدام select_related
-    # لاحظ أننا أضفنا 'item__item' للوصول لبيانات المخزن الأساسية وأضفنا 'status'
-    items = RentalOrder.objects.select_related('customer', 'item__item',  'status').all().order_by('-id')
-    
-    # 2. جلب جميع الحالات المتاحة لإظهارها في الـ Select داخل الصفحة
+    # 1. جلب المدخلات من البحث والفلتر
+    search_query = request.GET.get('search_id')
+    status_filter = request.GET.get('status_filter')
+
+    # 2. الاستعلام الأساسي مع تحسين الأداء
+    items = RentalOrder.objects.select_related('customer', 'item__item', 'status').all().order_by('-id')
+
+    # 3. تطبيق البحث برقم الطلب (ID)
+    if search_query:
+        items = items.filter(id=search_query)
+
+    # 4. تطبيق فلتر الحالة
+    if status_filter:
+        items = items.filter(status_id=status_filter)
+
+    # 5. إحصائيات احترافية
+    stats = {
+        'total_orders': items.count(),
+        'total_revenue': items.aggregate(Sum('total_price'))['total_price__sum'] or 0,
+        'total_penalties': items.aggregate(Sum('late_damage_penalty'))['late_damage_penalty__sum'] or 0,
+        'late_count': items.filter(status__status="متاخر").count(), # تأكد من المسمى لديك
+    }
+
     all_statuses = Rental_status_choices.objects.all()
-    
+
     return render(request, 'pos/rental_items_list.html', {
         'items': items,
-        'all_statuses': all_statuses  # هذه ضرورية جداً للقائمة المنسدلة
+        'all_statuses': all_statuses,
+        'stats': stats,
+        'status_filter': status_filter
     })
 
 def update_rental_status(request, pk):
     if request.method == 'POST':
         rental = get_object_or_404(RentalOrder, pk=pk)
-        
-        # 3. جلب الـ ID الخاص بالحالة من الـ POST
-        status_id = request.POST.get('status_id') # تأكد أن الاسم مطابق للـ name في الـ HTML
+        status_id = request.POST.get('status_id')
         
         if status_id:
-            # 4. جلب كائن الحالة الفعلي وتعيينه للطلب
+            # جلب الحالة الجديدة التي اختارها المستخدم من القائمة (مثلاً "تم الاستلام")
             new_status = get_object_or_404(Rental_status_choices, pk=status_id)
-            rental.status = new_status
-            rental.save() # هنا سيعمل الـ Signal تلقائياً لتحديث المخزن والأرباح
+            today = timezone.now().date()
+
+            # التحقق: إذا كان المستخدم يغير الحالة إلى "تم الاستلام"
+            if new_status.status == "تم الاستلام":
+                rental.actual_return_date = today
+                
+                # مقارنة تاريخ اليوم بتاريخ العودة المتوقع
+                if today > rental.return_date:
+                    # إذا كان متأخراً، نبحث عن حالة "متأخر" لتعيينها بدلاً من "تم الاستلام"
+                    try:
+                        late_status = Rental_status_choices.objects.get(status="متأخر")
+                        rental.status = late_status
+                        messages.warning(request, f"تم تسجيل العودة، ولكن العميل متأخر عن الموعد!")
+                    except Rental_status_choices.DoesNotExist:
+                        rental.status = new_status
+                else:
+                    # إذا لم يتأخر، نعتمد حالة "تم الاستلام"
+                    rental.status = new_status
+            else:
+                # لأي حالة أخرى (محجوز، منفذ، إلخ) يتم التحديث طبيعي
+                rental.status = new_status
+            
+            rental.save()
+            messages.success(request, "تم تحديث حالة الطلب بنجاح")
             
     return redirect('all_rental_items')
+
+def edit_rental_order(request, pk):
+    rental = get_object_or_404(RentalOrder, pk=pk)
+    
+    if request.method == 'POST':
+        form = RentalOrderForm(request.POST, instance=rental)
+        
+        if form.is_valid():
+            updated_order = form.save(commit=False)
+            
+            # منطق تاريخ العودة والحالة
+            if updated_order.status and updated_order.status.status == "تم الاستلام":
+                today = timezone.now().date()
+                updated_order.actual_return_date = today
+                
+                if today > updated_order.return_date:
+                    try:
+                        # تأكد أن الكلمة مكتوبة "متاخر" أو "متأخر" كما في قاعدة بياناتك
+                        late_status = Rental_status_choices.objects.get(status="متاخر")
+                        updated_order.status = late_status
+                        messages.warning(request, "تنبيه: تم تغيير الحالة إلى 'متأخر' لوجود تأخير في الموعد.")
+                    except Rental_status_choices.DoesNotExist:
+                        messages.error(request, "خطأ: لم يتم العثور على حالة 'متاخر' في النظام.")
+            
+            updated_order.save()
+            messages.success(request, f"تم تحديث بيانات الطلب للعميل {rental.customer.name} بنجاح")
+            return redirect('all_rental_items')
+    else:
+        form = RentalOrderForm(instance=rental)
+
+    # ملاحظة: إذا كان ملف HTML داخل مجلد اسمه pos، اجعلها 'pos/edit_rental.html'
+    return render(request, 'pos/edit_rental.html', {
+    'form': form,
+    'rental': rental
+})
 
 
 def search_UID(request):

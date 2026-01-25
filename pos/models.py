@@ -147,7 +147,7 @@ class RentalItem(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.UID:
-            self.UID = f"RENT-{uuid.uuid4().hex[:12].upper()}"
+            self.UID = f"RENT-{uuid.uuid4().hex[:6].upper()}"
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -225,6 +225,14 @@ class RentalOrder(models.Model):
         blank=True,
         null=True,
         verbose_name="ملاحظات (مقاسات، تعديلات)"
+    )
+    late_damage_penalty = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="غرامة التأخير أو التلف",
+        null=True,
+        blank=True
     )
 
     # =========================

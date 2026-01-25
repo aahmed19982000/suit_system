@@ -22,6 +22,7 @@ urlpatterns = [
     path('supplies-management/delete/<int:pk>/', views.delete_supplier, name='delete_supplier'),
     path('check-supplier/', views.check_supplier_by_phone, name='check_supplier_by_phone'),
     path('rental-items-log/', views.rental_items_list, name='rental_items_list'),    
+    path('rentals/edit/<int:pk>/', views.edit_rental_order, name='edit_rental_order'),
     
 
     # --- 3. مسارات العمليات (POST) ---

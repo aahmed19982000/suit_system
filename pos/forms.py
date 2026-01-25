@@ -22,13 +22,22 @@ class ProductForm(forms.ModelForm):
 class RentalOrderForm(forms.ModelForm):
     class Meta:
         model = RentalOrder
-        fields = ['customer', 'item', 'rental_date', 'return_date', 'status']  # الحقول اللي تظهر في الفورم
+        fields = ['customer', 'item', 'rental_date', 'return_date', 
+            'size', 'pants_size', 'color', 'status', 
+            'deposit_amount', 'total_price', 'late_damage_penalty', 'notes']  # الحقول اللي تظهر في الفورم
         widgets = {
             'customer': forms.Select(attrs={'class': 'form-control'}),
             'item': forms.Select(attrs={'class': 'form-control'}),
             'rental_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'return_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'size': forms.Select(attrs={'class': 'form-control'}),
+            'pants_size': forms.TextInput(attrs={'class': 'form-control'}),
+            'color': forms.Select(attrs={'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
+            'deposit_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'total_price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'late_damage_penalty': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'أدخل الغرامة إن وجدت'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
         labels = {
             'customer': 'العميل',
