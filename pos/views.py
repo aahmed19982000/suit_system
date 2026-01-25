@@ -610,6 +610,10 @@ def pos_rental_page(request):
         'colors': colors
     })
 
+from django.db import transaction
+from decimal import Decimal
+import json
+
 @transaction.atomic
 def rental_checkout(request):
     if request.method == 'POST':
@@ -617,15 +621,17 @@ def rental_checkout(request):
             data = json.loads(request.body)
             phone = data.get('phone')
             customer_id = data.get('customer_id')
-            
-            # 1. معالجة العميل
+
+            # 1️⃣ معالجة العميل
             if customer_id:
                 customer = Customer.objects.get(id=customer_id)
             else:
-                # التأكد من وجود رقم هاتف قبل الإنشـاء
                 if not phone:
-                    return JsonResponse({'status': 'error', 'message': 'رقم الهاتف مطلوب للعميل الجديد'}, status=400)
-                
+                    return JsonResponse(
+                        {'status': 'error', 'message': 'رقم الهاتف مطلوب للعميل الجديد'},
+                        status=400
+                    )
+
                 customer, created = Customer.objects.get_or_create(
                     mobil=phone,
                     defaults={
@@ -633,42 +639,62 @@ def rental_checkout(request):
                         'address': data.get('customer_address', 'غير محدد')
                     }
                 )
-            
-            # 2. جلب البدلة
+
+            # 2️⃣ جلب البدلة
             rental_item = RentalItem.objects.get(UID=data.get('uid'))
-            
-            # 3. تحويل القيم المالية لضمان عدم حدوث خطأ Unsupported Operand
-            # نستخدم str() ثم Decimal() لضمان التحويل الصحيح من JSON
+
+            # 3️⃣ القيم المالية
             t_price = Decimal(str(data.get('total_price') or 0))
             d_amount = Decimal(str(data.get('deposit_amount') or 0))
 
-            # 4. إنشاء طلب الحجز
-            order = RentalOrder.objects.create(
-                    customer=customer,
-                    item=rental_item,
-                    rental_date=data.get('rental_date'),
-                    return_date=data.get('return_date'),
-                    size_id=data.get('size_id'), 
-                    color_id=data.get('color_id'),
-                    # التعديل هنا: استخدم حرف الكشيدة (ـ) المطابق للموديل في الطرف الأيمن
-                    pantsـsize=data.get('pants_size'), 
-                    total_price=t_price,
-                    deposit_amount=d_amount, 
-                    status_id=2,  
-                    notes=data.get('notes')
-                )
-            
+            # 4️⃣ جلب حالة "محجوز" بالاسم (مش ID)
+            reserved_status = Rental_status_choices.objects.get(status="محجوز")
+
+            # 5️⃣ إنشاء الطلب (بدون save)
+            order = RentalOrder(
+                customer=customer,
+                item=rental_item,
+                rental_date=data.get('rental_date'),
+                return_date=data.get('return_date'),
+                size_id=data.get('size_id'),
+                color_id=data.get('color_id'),
+                pants_size=data.get('pants_size'),
+  # زي ما هو دلوقتي
+                total_price=t_price,
+                deposit_amount=d_amount,
+                status_id=2,
+                notes=data.get('notes')
+            )
+
+            # 6️⃣ تشغيل كل validations (clean)
+            order.full_clean()   
+            order.save()
+
             return JsonResponse({
-                'status': 'success', 
+                'status': 'success',
                 'message': 'تم تسجيل الحجز بنجاح',
                 'order_id': order.id
             })
-            
+
+        except Rental_status_choices.DoesNotExist:
+            return JsonResponse(
+                {'status': 'error', 'message': 'حالة "محجوز" غير موجودة في النظام'},
+                status=400
+            )
+
         except RentalItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'كود البدلة غير صحيح'}, status=404)
+            return JsonResponse(
+                {'status': 'error', 'message': 'كود البدلة غير صحيح'},
+                status=404
+            )
+
         except Exception as e:
             print(f"Checkout Error: {str(e)}")
-            return JsonResponse({'status': 'error', 'message': f"فشل الحفظ: {str(e)}"}, status=400)        
+            return JsonResponse(
+                {'status': 'error', 'message': f'فشل الحفظ: {str(e)}'},
+                status=400
+            )
+  
 
 def all_rental_items(request):
     # 1. جلب الطلبات مع تحسين الأداء باستخدام select_related

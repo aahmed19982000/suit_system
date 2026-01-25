@@ -153,27 +153,102 @@ class RentalItem(models.Model):
     def __str__(self):
         return f"{self.item.name} - {self.UID}"
 
-class RentalOrder(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="العميل")
-    item = models.ForeignKey(RentalItem, on_delete=models.CASCADE, verbose_name="البدلة")
-    rental_date = models.DateField(verbose_name="تاريخ الحجز/الخروج")
-    return_date = models.DateField(verbose_name="تاريخ العودة المتوقع")
-    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="المقاس")
-    pantsـsize= models.CharField(max_length=50, verbose_name="مقاس البنطلون")
-    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون")
-    actual_return_date = models.DateField(null=True, blank=True, verbose_name="تاريخ العودة الفعلي")
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="قيمة الإيجار")
-    deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مبلغ التأمين")
-    status = models.ForeignKey(Rental_status_choices, on_delete=models.CASCADE, verbose_name="حالة البدلة", null=True, blank=True, default=1)
-    notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات (مقاسات، تعديلات)")
 
+
+class RentalOrder(models.Model):
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        verbose_name="العميل"
+    )
+
+    item = models.ForeignKey(
+        RentalItem,
+        on_delete=models.CASCADE,
+        verbose_name="البدلة"
+    )
+
+    rental_date = models.DateField(
+        verbose_name="تاريخ الحجز / الخروج"
+    )
+
+    return_date = models.DateField(
+        verbose_name="تاريخ العودة المتوقع"
+    )
+
+    size = models.ForeignKey(
+        Size_choices,
+        on_delete=models.CASCADE,
+        verbose_name="المقاس"
+    )
+
+    # ✅ اسم نظيف (underscore حقيقي)
+    pants_size = models.CharField(
+        max_length=50,
+        verbose_name="مقاس البنطلون"
+    )
+
+    color = models.ForeignKey(
+        Colors_choices,
+        on_delete=models.CASCADE,
+        verbose_name="اللون"
+    )
+
+    actual_return_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="تاريخ العودة الفعلي"
+    )
+
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="قيمة الإيجار"
+    )
+
+    deposit_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="مبلغ التأمين"
+    )
+
+    # ❌ بدون default — الحالة تتحدد من الـ business logic
+    status = models.ForeignKey(
+        Rental_status_choices,
+        on_delete=models.CASCADE,
+        verbose_name="حالة البدلة",
+        null=True,
+        blank=True
+    )
+
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="ملاحظات (مقاسات، تعديلات)"
+    )
+
+    # =========================
+    # Validation Logic
+    # =========================
     def clean(self):
+        """
+        التحقق من صحة الحجز قبل الحفظ
+        """
+
+        if not self.item:
+            raise ValidationError("يجب اختيار بدلة")
+
         inventory_item = self.item.item
+
+        # 1️⃣ التأكد إن الصنف قابل للإيجار
         if not inventory_item.is_rental:
             raise ValidationError("هذا الصنف غير متاح للإيجار")
+
+        # 2️⃣ التحقق من الكمية (عند الإنشاء فقط)
         if self.pk is None and inventory_item.quantity <= 0:
             raise ValidationError("لا توجد قطع متاحة للإيجار حالياً")
-        
+
+        # 3️⃣ منع الحجز المكرر لنفس البدلة
         try:
             reserved_status = Rental_status_choices.objects.get(status="محجوز")
         except Rental_status_choices.DoesNotExist:
@@ -185,15 +260,16 @@ class RentalOrder(models.Model):
         ).exclude(pk=self.pk).exists()
 
         if is_reserved:
-            raise ValidationError("هذه البدلة محجوزة بالفعل ولا يمكن حجزها مرة أخرى")
-        
-            
+            raise ValidationError(
+                "هذه البدلة محجوزة بالفعل ولا يمكن حجزها مرة أخرى"
+            )
 
-
-    # ملاحظة: دالة save محذوفة من هنا لأن المنطق انتقل لـ signals.py
-
+    # =========================
+    # String Representation
+    # =========================
     def __str__(self):
         return f"تأجير {self.item.item.name} - {self.customer.name}"
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
