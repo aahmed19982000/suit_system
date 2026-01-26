@@ -42,9 +42,21 @@
 
     <section class="stats-container">
         <div class="luxury-card stat-item">
-            <div class="stat-info"><span class="label">إجمالي الأصناف</span><span class="value">{{ items.count }}</span></div>
+            <div class="stat-info">
+                <span class="label">إجمالي أنواع الأصناف</span>
+                <span class="value">{{ total_items_count }}</span>
+            </div>
             <span class="material-symbols-outlined icon-bg">inventory</span>
         </div>
+
+        <div class="luxury-card stat-item" style="border-right: 4px solid #ff4757; background: rgba(255, 71, 87, 0.05);">
+            <div class="stat-info">
+                <span class="label" style="color: #ff4757;">أصناف تحتاج شراء</span>
+                <span class="value" style="color: #ff4757;">{{ low_stock_count }}</span>
+            </div>
+            <span class="material-symbols-outlined icon-bg" style="color: rgba(255, 71, 87, 0.2);">shopping_cart_checkout</span>
+        </div>
+
         <div class="luxury-card stat-item total-value-border">
             <div class="stat-info">
                 <span class="label text-emerald">إجمالي القيمة التقديرية</span>
@@ -52,6 +64,69 @@
             </div>
             <span class="material-symbols-outlined icon-bg emerald-icon">payments</span>
         </div>
+        
+        <div class="luxury-card stat-item" style="border-right: 4px solid #d4af37;">
+            <div class="stat-info">
+                <span class="label" style="color: #d4af37;">إجمالي الربح المتوقع</span>
+                <span class="value" style="color: #d4af37;">{{ total_expected_profit|floatformat:2|default:"0.00" }} <small>ج.م</small></span>
+            </div>
+            <span class="material-symbols-outlined icon-bg" style="color: rgba(212, 175, 55, 0.1);">trending_up</span>
+        </div>
+    </section>
+
+    <section class="filter-section luxury-card" style="margin-bottom: 25px; padding: 20px; border: 1px solid #d4af37;">
+        <form method="GET" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
+            
+            <div style="flex: 2; min-width: 250px;">
+                <label class="form-label" style="color: #d4af37; font-weight: bold; margin-bottom: 8px; display: block;">بحث سريع</label>
+                <div style="position: relative;">
+                    <input type="text" name="search" value="{{ search_query|default:'' }}" 
+                           class="form-input-luxury" placeholder="الاسم أو كود الصنف...">
+                    <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888;">search</span>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 120px;">
+                <label class="form-label">المقاس</label>
+                <select name="size" class="form-select-luxury">
+                    <option value="all">الكل</option>
+                    {% for size in sizes %}
+                    <option value="{{ size.id }}" {% if selected_size == size.id|stringformat:"i" %}selected{% endif %}>{{ size.size }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 120px;">
+                <label class="form-label">اللون</label>
+                <select name="color" class="form-select-luxury">
+                    <option value="all">الكل</option>
+                    {% for color in colors %}
+                    <option value="{{ color.id }}" {% if selected_color == color.id|stringformat:"i" %}selected{% endif %}>{{ color.color }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 150px;">
+                <label class="form-label">من تاريخ</label>
+                <input type="date" name="start_date" value="{{ start_date }}" class="form-input-luxury">
+            </div>
+
+            <div style="flex: 1; min-width: 150px;">
+                <label class="form-label">إلى تاريخ</label>
+                <input type="date" name="end_date" value="{{ end_date }}" class="form-input-luxury">
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+                <button type="submit" class="btn-primary-luxury" style="height: 48px; width: 55px; justify-content: center; padding: 0;">
+                    <span class="material-symbols-outlined">filter_list</span>
+                </button>
+                <a href="{% url 'inventory_management' %}" class="btn-secondary-luxury" 
+                   style="text-decoration: none; height: 48px; width: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #333;" 
+                   title="إعادة تعيين">
+                    <span class="material-symbols-outlined">restart_alt</span>
+                </a>
+            </div>
+        </form>
     </section>
 
     <div class="inventory-table-container">
@@ -64,6 +139,7 @@
                     <th>تكلفة التوريد</th>
                     <th>سعر البيع</th>
                     <th>الكمية</th>
+                    <th>حد الطلب</th>
                     <th class="text-center">الإجراءات</th>
                 </tr>
             </thead>
@@ -79,6 +155,17 @@
                         <div class="status-badge-luxury {% if item.quantity <= item.min_limit %}status-red{% else %}status-green{% endif %}">
                             {{ item.quantity|floatformat:2 }}
                         </div>
+                    </td>
+                    <td>
+                        <div class="status-badge-luxury {% if item.is_low %}status-red{% else %}status-green{% endif %}">
+                            {{ item.min_limit }}
+                        </div>
+                        {% if item.is_low %}
+                        <div style="color: #ff4757; font-size: 0.75rem; margin-top: 5px; font-weight: bold; display: flex; align-items: center; gap: 3px;">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
+                            يحتاج شراء
+                        </div>
+                        {% endif %}
                     </td>
                     <td class="text-center">
                         <button onclick="openControlModal('{{ item.id }}', '{{ item.name }}', '{{ item.unit_cost }}', '{{ item.supply_cost }}')" class="btn-action-icon edit-btn">
@@ -227,7 +314,7 @@
         </div>
 
         <div id="supply-tab" class="tab-content active">
-            <form action="{% url 'update_inventory' %}" method="POST">
+            <form id="supplyForm" action="{% url 'update_inventory' %}" method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="item_id" id="control_item_id_supply">
                 <div class="form-group-luxury" style="margin-bottom: 15px;">
@@ -238,7 +325,7 @@
                     <label class="form-label">المبلغ المدفوع للمورد</label>
                     <input name="paid_amount" type="number" step="0.01" class="form-input-luxury" value="0">
                 </div>
-                <button type="submit" class="btn-primary-luxury full-width">تأكيد عملية التوريد</button>
+                <button type="button" onclick="submitSupplyAjax()" class="btn-primary-luxury full-width">تأكيد عملية التوريد</button>
             </form>
         </div>
 
@@ -281,6 +368,35 @@
 
 {% block extra_js %}
 <script>
+    function submitSupplyAjax() {
+    const form = document.getElementById('supplyForm');
+    const formData = new FormData(form);
+    
+    // إرسال البيانات باستخدام Fetch
+    fetch(form.action, {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-Requested-With": "XMLHttpRequest", // ليعرف Django أنه طلب AJAX
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // إغلاق النافذة المنبثقة
+            closeModal('controlModal');
+            // تحديث الصفحة الحالية لعرض البيانات الجديدة دون الانتقال لصفحة سوداء
+            location.reload(); 
+        } else {
+            // عرض الخطأ إذا وجد
+            alert("خطأ: " + data.message);
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("حدث خطأ في الاتصال بالسيرفر");
+    });
+}
     // الدوال الأساسية للنوافذ
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -347,13 +463,26 @@
 
         function updateFinance() {
             const qty = parseFloat(qtyInput.value) || 0;
-            const cost = parseFloat(costInput.value) || 0;
-            const total = (qty * cost).toFixed(2);
+            const supplyCost = parseFloat(costInput.value) || 0; // تكلفة التوريد
+            const unitPrice = parseFloat(document.querySelector('input[name="unit_cost"]').value) || 0; // سعر البيع
+            
+            // 1. حساب الإجمالي للمورد
+            const total = (qty * supplyCost).toFixed(2);
             if(totalDisplay) totalDisplay.value = total;
             if(paidInput && (!paidInput.dataset.userEdited)) paidInput.value = total;
+
+            // 2. حساب الربح لكل قطعة تلقائياً (سعر البيع - تكلفة التوريد)
+            const profitInput = document.querySelector('input[name="profit"]');
+            if (profitInput) {
+                const profitPerPiece = (unitPrice - supplyCost).toFixed(2);
+                profitInput.value = profitPerPiece;
+            }
+
             checkDebt();
         }
 
+        // أضف مستمع حدث لسعر البيع أيضاً ليتم تحديث الربح عند تغييره
+        document.querySelector('input[name="unit_cost"]')?.addEventListener('input', updateFinance);
         function checkDebt() {
             const total = parseFloat(totalDisplay?.value) || 0;
             const paid = parseFloat(paidInput?.value) || 0;

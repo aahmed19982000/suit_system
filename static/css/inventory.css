@@ -16,6 +16,7 @@
 /* هيكل الصفحة */
 .inventory-page-wrapper {
     background-color: var(--bg-page);
+    flex-direction: column;
     min-height: 100vh;
     padding: 2rem;
     color: var(--text-white);
@@ -159,6 +160,8 @@
     border: 1px solid var(--border-color);
     border-radius: 20px;
     overflow: hidden;
+    width: 100%;
+    clear: both;
 }
 
 .luxury-data-table {
@@ -434,3 +437,19 @@
         from { opacity: 0; transform: scale(0.9); }
         to { opacity: 1; transform: scale(1); }
     }
+
+
+/* تعديل قسم الفلتر ليأخذ العرض الكامل ويوزع العناصر بداخله */
+.filter-section.luxury-card {
+    width: 100%; /* العرض الكامل */
+    display: block; /* إلغاء أي فلكس خارجي */
+    margin-bottom: 20px;
+}
+
+.filter-section.luxury-card form {
+    display: flex;
+    flex-wrap: wrap; /* يسمح للعناصر بالنزول سطر جديد في الشاشات الصغيرة */
+    gap: 15px;
+    align-items: flex-end;
+    width: 100%;
+}

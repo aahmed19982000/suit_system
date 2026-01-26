@@ -266,29 +266,70 @@ def menu_management(request, product_id=None):
         form = ProductForm(instance=product)
     return render(request, 'pos/menu_management.html', {'form': form, 'products': Product.objects.all(), 'editing_product': product})
 
+from django.db.models import F, Q
+from django.utils.dateparse import parse_date # لإصلاح تنسيق التاريخ
+
 def inventory_management(request):
-    items = InventoryItem.objects.all().order_by('name')
-    low_stock_count = items.filter(quantity__lte=F('min_limit')).count()
-    inventory_value = sum(item.quantity * item.unit_cost for item in items)
+    items = InventoryItem.objects.all().order_by('-updated_at') # الترتيب من الأحدث
     
+    # استلام قيم البحث والفلاتر
+    search_query = request.GET.get('search')
     category_filter = request.GET.get('category')
+    size_filter = request.GET.get('size')
+    color_filter = request.GET.get('color')
+    
+    # فلاتر التاريخ
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    # 1. تطبيق البحث النصي
+    if search_query:
+        items = items.filter(Q(name__icontains=search_query) | Q(rental_code__icontains=search_query))
+
+    # 2. تطبيق فلاتر الاختيار
     if category_filter and category_filter != 'all':
         items = items.filter(category_id=category_filter)
+    if size_filter and size_filter != 'all':
+        items = items.filter(size_id=size_filter)
+    if color_filter and color_filter != 'all':
+        items = items.filter(color_id=color_filter)
+
+    # 3. تطبيق فلتر التاريخ (على تاريخ التحديث)
+    if start_date:
+        items = items.filter(updated_at__date__gte=start_date)
+    if end_date:
+        items = items.filter(updated_at__date__lte=end_date)
+
+    # 4. حسابات الإحصائيات (تتأثر بالفلترة والتاريخ)
+    total_items_count = items.count()
+    low_stock_count = items.filter(quantity__lte=F('min_limit')).count()
+    
+    # إجمالي الأرباح المتوقعة للمجموعة المفلترة
+    total_expected_profit = sum(item.profit * item.quantity for item in items)
+    # إجمالي قيمة المخزون
+    inventory_value = sum(item.quantity * item.unit_cost for item in items)
 
     context = {
         'items': items,
         'categories': IngredientCategory.objects.all(),
-        'units': Unit_choices.objects.all(),
-        'suppliers': Supplier.objects.all(),
         'sizes': Size_choices.objects.all(),
         'colors': Colors_choices.objects.all(),
-        'total_items_count': items.count(),
+        'units': Unit_choices.objects.all(),
+        'suppliers': Supplier.objects.all(),
+        
+        'total_items_count': total_items_count,
         'low_stock_count': low_stock_count,
         'inventory_value': inventory_value,
+        'total_expected_profit': total_expected_profit, # أضفنا إحصائية الربح
+        
+        'search_query': search_query,
         'selected_category': category_filter,
+        'selected_size': size_filter,
+        'selected_color': color_filter,
+        'start_date': start_date,
+        'end_date': end_date,
     }
     return render(request, 'pos/inventory_management.html', context)
-
 @require_POST
 def add_inventory_item(request):
     try:

@@ -79,7 +79,10 @@ class InventoryItem(models.Model):
 
             # إدارة قطع الإيجار المادية (منع التكرار)
             existing_count = RentalItem.objects.filter(item=self).count()
-            needed = self.quantity - existing_count
+            
+            # التعديل هنا: تحويل الناتج إلى رقم صحيح ليتوافق مع دالة range
+            needed = int(self.quantity) - int(existing_count)
+            
             if needed > 0:
                 for _ in range(needed):
                     RentalItem.objects.create(item=self)
