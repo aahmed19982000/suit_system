@@ -90,10 +90,14 @@ def pos_page(request):
     
     # جلب تصنيفات المواد الخام/المخزن
     categories = IngredientCategory.objects.all() 
+    sizes = Size_choices.objects.all()
+    colors = Colors_choices.objects.all()
     
     return render(request, 'pos/pos_page.html', {
         'products': products, 
-        'categories': categories
+        'categories': categories,
+        'sizes': sizes,
+        'colors': colors
     })
 
 

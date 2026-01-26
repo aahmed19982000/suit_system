@@ -56,28 +56,48 @@
                 <input type="text" id="posSearch" placeholder="ابحث عن صنف...">
             </div>
             <div class="user-actions">
-                <button class="btn-top-action btn-rental-trigger" onclick="openRentalModal()">👔 تأجير بدلة</button>
                 <a href="{% url 'orders' %}" class="btn-top-action btn-return">🔄 المرتجعات</a>
             </div>
         </header>
 
-        <nav class="categories-container">
-            <div class="cat-track">
-                <button class="cat-pill active" data-filter="all">⭐ الكل</button>
+        <nav class="categories-container" style="background: #111; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+            <div class="cat-track" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 5px;">
+                <button class="cat-pill active" data-filter="all" style="min-width: 100px;">⭐ الكل</button>
+                
                 {% for category in categories %}
-                    <button class="cat-pill" data-filter="{{ category.id }}">{{ category.name }}</button>
+                    <button class="cat-pill" data-filter="{{ category.id }}" style="min-width: 100px;">
+                        {{ category.name|default:category }} 
+                    </button>
                 {% endfor %}
             </div>
         </nav>
+        <div class="extra-filters" style="display: flex; gap: 10px; margin-bottom: 15px; padding: 0 10px;">
+            <select id="sizeFilter" class="form-select-luxury" style="flex: 1; padding: 8px; border-radius: 8px; background: #1a1a1a; color: #d4af37; border: 1px solid #444;">
+                <option value="all">كل المقاسات</option>
+                {% for size in sizes %}
+                    <option value="{{ size.id }}">{{ size.size }}</option>
+                {% endfor %}
+            </select>
+
+            <select id="colorFilter" class="form-select-luxury" style="flex: 1; padding: 8px; border-radius: 8px; background: #1a1a1a; color: #d4af37; border: 1px solid #444;">
+                <option value="all">كل الألوان</option>
+                {% for color in colors %}
+                    <option value="{{ color.id }}">{{ color.color }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
         <div class="products-layout" id="productsGrid">
             {% for item in products %} 
-            <div class="product-item" data-category="{{ item.category.id }}">
+            <div class="product-item" 
+                data-category="{{ item.category.id }}" 
+                data-size="{{ item.size.id }}" 
+                data-color="{{ item.color.id }}">
                 <div class="product-main-info">
                     <h3 class="product-title">{{ item.name }}</h3>
                     <div class="product-price-tag">{{ item.unit_cost }} <span>ج.م</span></div>
                 </div>
-                <p class="product-desc">المتاح: {{ item.quantity }}</p>
+                <p class="product-desc">المتاح: {{ item.quantity }} | مقاس: {{ item.size.size }}</p>
                 <button class="add-to-cart-btn" data-id="{{ item.id }}" data-name="{{ item.name }}" data-price="{{ item.unit_cost }}"> إضافة + </button>
             </div>
             {% endfor %}
@@ -97,27 +117,6 @@
     </aside>
 </div>
 
-<div id="rentalModal" class="custom-modal">
-    <div class="modal-content">
-        <h3 style="border-bottom: 2px solid #e67e22; padding-bottom: 10px;">تسجيل حجز تأجير</h3>
-        <label>وصف البدلة:</label>
-        <input type="text" id="rentItemName" class="input-field" placeholder="بدلة سوداء سليم">
-        <label>المقاسات المأخوذة:</label>
-        <input type="text" id="rentSizes" class="input-field" placeholder="كتف 44، طول 75...">
-        <label>ملاحظات:</label>
-        <textarea id="rentNotes" class="input-field" placeholder="ملاحظات العميل..."></textarea>
-        <div class="row-flex">
-            <div><label>تاريخ الاستلام:</label><input type="date" id="rentStart" class="input-field"></div>
-            <div><label>تاريخ العودة:</label><input type="date" id="rentEnd" class="input-field"></div>
-        </div>
-        <div class="row-flex">
-            <div><label>سعر الإيجار:</label><input type="number" id="rentPrice" class="input-field"></div>
-            <div><label>التأمين:</label><input type="number" id="rentDeposit" class="input-field"></div>
-        </div>
-        <button class="modal-btn btn-confirm" style="background:#e67e22;" onclick="submitRental()">تأكيد وطباعة 🖨️</button>
-        <button class="modal-btn btn-cancel" onclick="closeModals()">إلغاء</button>
-    </div>
-</div>
 
 <div id="orderTypeModal" class="custom-modal">
     <div class="modal-content" style="text-align: center;">
@@ -306,5 +305,53 @@ function searchCustomer() {
         if (data.found) { document.getElementById('custName').value = data.name; document.getElementById('custAddress').value = data.address; }
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('posSearch');
+    const sizeSelect = document.getElementById('sizeFilter');
+    const colorSelect = document.getElementById('colorFilter');
+    const catButtons = document.querySelectorAll('.cat-pill');
+    const items = document.querySelectorAll('.product-item');
+
+    function filterAll() {
+        const query = searchInput.value.toLowerCase();
+        const activeCat = document.querySelector('.cat-pill.active').dataset.filter;
+        const selectedSize = sizeSelect.value;
+        const selectedColor = colorSelect.value;
+
+        items.forEach(item => {
+            const name = item.querySelector('.product-title').innerText.toLowerCase();
+            const cat = item.dataset.category;
+            const size = item.dataset.size;
+            const color = item.dataset.color;
+
+            // شروط الفلترة
+            const matchesSearch = name.includes(query);
+            const matchesCat = (activeCat === 'all' || cat === activeCat);
+            const matchesSize = (selectedSize === 'all' || size === selectedSize);
+            const matchesColor = (selectedColor === 'all' || color === selectedColor);
+
+            // إظهار المنتج فقط إذا تحققت جميع الشروط
+            if (matchesSearch && matchesCat && matchesSize && matchesColor) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // التنصت على التغييرات في جميع الحقول
+    searchInput.addEventListener('input', filterAll);
+    sizeSelect.addEventListener('change', filterAll);
+    colorSelect.addEventListener('change', filterAll);
+    
+    catButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            catButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            filterAll();
+        });
+    });
+});
 </script>
 {% endblock %}
