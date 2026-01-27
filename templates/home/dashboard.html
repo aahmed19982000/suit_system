@@ -1,150 +1,122 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}لوحة التحكم - ملخص الوردية{% endblock %}
-
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-    .dashboard-wrapper { direction: rtl; font-family: 'Cairo', sans-serif; }
-    .stat-info strong, .item-name-row span, .total strong { color: #2c3e50 !important; }
-    .trend-up { color: #2ecc71 !important; font-weight: bold; }
-    .trend-down { color: #e74c3c !important; font-weight: bold; }
-    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: #f0f2f5; }
-</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-wrapper">
     <header class="main-header">
-        <div class="header-right">
-            <a href="#" class="btn-add-order" style="text-decoration: none;">+ طلب جديد</a>
-            <div class="notification-icon">
-                <span class="dot"></span>
-                <i class="bell-icon">🔔</i>
-            </div>
+        <div class="header-title">
+            <h2>التقرير التحليلي الشامل</h2>
+            <p class="text-muted"><i class="far fa-calendar-alt me-2"></i> {{ today_date|date:"l، d F Y" }}</p>
         </div>
-        <div class="header-left">
-            <h2>ملخص الوردية</h2>
-            <p>{{ today_date|date:"l، d F Y" }}</p>
+        <div class="header-btns">
+            <a href="{% url 'pos_page' %}" class="btn btn-action">
+                <i class="fas fa-plus me-2"></i> إنشاء فاتورة بيع
+            </a>
         </div>
     </header>
 
-    <section class="stats-row">
+    <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon blue-bg">S</div>
-            <div class="stat-info">
-                <span>المبيعات اليومية</span>
-                <strong>{{ total_sales|default:"0" }} ج.م</strong>
-                <small class="{% if growth_rate >= 0 %}trend-up{% else %}trend-down{% endif %}">
-                    {% if growth_rate >= 0 %}↑{% else %}↓{% endif %} {{ abs_growth_rate }}% عن الأمس
-                </small>
+            <div class="icon-box blue-stat"><i class="fas fa-chart-line"></i></div>
+            <span>إجمالي مبيعات اليوم</span>
+            <h3>{{ total_sales|floatformat:2 }} <small class="fs-6">ج.م</small></h3>
+            <div class="mt-2 {% if growth_rate >= 0 %}text-success{% else %}text-danger{% endif %} small fw-bold">
+                {% if growth_rate >= 0 %}+{% endif %}{{ growth_rate|floatformat:1 }}% منذ أمس
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon orange-bg">📋</div>
-            <div class="stat-info">
-                <span>الطلبات الكلية</span>
-                <strong>{{ total_orders_count }} طلب</strong>
-                <small>منذ بداية الوردية</small>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon yellow-bg">🏠</div>
-            <div class="stat-info">
-                <span>قيد التحضير</span>
-                <strong>{{ preparing_orders_count }} طلبات</strong>
-                <small class="warning-text">تحتاج انتباه</small>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon purple-bg">📊</div>
-            <div class="stat-info">
-                <span>متوسط الطلب</span>
-                <strong>{{ average_order_value|floatformat:0 }} ج.م</strong>
-                <small>قيمة الفاتورة</small>
-            </div>
-        </div>
-    </section>
 
-    <div class="main-grid">
-        <aside class="best-sellers-section">
-            <div class="section-header">
-                <h3>الأصناف الأكثر مبيعاً</h3>
-                {% if is_manager %}
-                <a href="#">تقارير مفصلة</a>
-                {% endif %}
+        <div class="stat-card">
+            <div class="icon-box green-stat"><i class="fas fa-shopping-bag"></i></div>
+            <span>متوسط الطلب</span>
+            <h3>{{ avg_order_value|default:"0"|floatformat:2 }} <small class="fs-6">ج.م</small></h3>
+        </div>
+
+        <div class="stat-card">
+            <div class="icon-box red-stat"><i class="fas fa-hand-holding-usd"></i></div>
+            <span>ديون الموردين</span>
+            <h3 class="text-danger">{{ supplier_stats.total_debts|default:"0"|floatformat:0 }} <small class="fs-6">ج.م</small></h3>
+        </div>
+
+        <div class="stat-card">
+            <div class="icon-box orange-stat"><i class="fas fa-warehouse"></i></div>
+            <span>قيمة المخزون</span>
+            <h3 class="text-warning">{{ total_inventory_value|default:"0"|floatformat:0 }} <small class="fs-6">ج.م</small></h3>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        
+        <div class="report-card">
+            <div class="card-header">
+                <h5><i class="fas fa-boxes me-2 text-info"></i> حالة المخزون الحالية</h5>
+                <a href="{% url 'inventory_management' %}" class="btn btn-sm btn-outline-secondary border-0 text-muted">إدارة <i class="fas fa-chevron-left ms-1"></i></a>
             </div>
-            
-            {% for item in best_sellers %}
-            <div class="seller-item">
-                <div class="item-icon pizza">🍴</div>
-                <div class="item-details">
-                    <div class="item-name-row">
-                        <span>{{ item.product__name }}</span>
-                        <span class="count">{{ item.total_qty }} طلب</span>
+            <div class="data-row">
+                <span class="text-muted">إجمالي الأصناف بالمحل</span>
+                <span class="fw-bold">{{ inventory_stats.total_items }} صنف</span>
+            </div>
+            <div class="data-row">
+                <span class="text-muted">أصناف قاربت على النفاذ</span>
+                <span class="badge bg-danger bg-opacity-10 text-danger px-3">{{ inventory_stats.low_stock }}</span>
+            </div>
+            <div class="data-row">
+                <span class="text-muted">المنتج الأكثر طلباً</span>
+                <span class="text-info fw-bold">{{ best_sellers.0.product__name|default:"-" }}</span>
+            </div>
+        </div>
+
+        <div class="report-card text-center">
+            <div class="card-header">
+                <h5 class="w-100 text-end"><i class="fas fa-users me-2 text-primary"></i> قاعدة العملاء</h5>
+            </div>
+            <div class="py-4">
+                <h1 class="display-3 fw-bold mb-0">{{ customer_stats.total }}</h1>
+                <p class="text-muted mb-4">عميل مسجل</p>
+                <div class="row g-0 border-top border-secondary border-opacity-10 pt-4">
+                    <div class="col-6 border-end border-secondary border-opacity-10">
+                        <div class="text-success fw-bold fs-4">{{ customer_stats.active_today }}</div>
+                        <small class="text-muted">نشط اليوم</small>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 70%; background: #3498db;"></div>
+                    <div class="col-6">
+                        <div class="text-info fw-bold fs-4">{{ new_customers_count|default:"0" }}</div>
+                        <small class="text-muted">جدد</small>
                     </div>
                 </div>
             </div>
-            {% empty %}
-            <p style="text-align: center; color: #95a5a6; padding-top: 20px;">لا توجد مبيعات مسجلة اليوم.</p>
-            {% endfor %}
+        </div>
 
-            <div class="daily-goal">
-                <div class="goal-info">
-                    <span>تحقيق الهدف اليومي</span>
-                    <strong>82%</strong>
-                </div>
-                <div class="progress-bar-large"><div class="progress" style="width: 82%;"></div></div>
+        <div class="report-card">
+            <div class="card-header border-0 mb-2">
+                <h5><i class="fas fa-fire me-2 text-danger"></i> تريند المنتجات</h5>
             </div>
-        </aside>
-
-        <main class="active-orders-section">
-            <div class="section-header">
-                <a href="#" class="view-all">عرض الكل</a>
-                <h3>الطلبات النشطة ({{ active_orders.count }})</h3>
-            </div>
-
-            <div class="orders-grid">
-                {% for order in active_orders %}
-                <div class="order-card">
-                    <div class="order-header">
-                        <span class="table-tag">طلب #{{ order.id }}</span>
-                        <span class="order-id">{{ order.created_at|date:"H:i" }}</span>
-                    </div>
-                    
-                    <div class="order-status">
-                         <span class="status-badge">{{ order.status }}</span>
-                    </div>
-
-                    <div class="order-items">
-                        {% for item in order.items.all %}
-                        <div class="item">
-                            <span>{{ item.quantity }}x {{ item.product.name }}</span>
-                            <span>{{ item.price }} ج.م</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <div class="order-footer">
-                        <div class="total"><span>الإجمالي</span> <strong>{{ order.total_price }} ج.م</strong></div>
-                        <div class="actions">
-                            <button class="btn-edit">تعديل</button>
-                            <button class="btn-ready">إتمام</button>
+            <div class="mt-2">
+                {% for item in best_sellers|slice:":5" %}
+                <div class="data-row border-0">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3 text-muted fw-bold">{{ forloop.counter }}.</div>
+                        <div>
+                            <div class="fw-bold small">{{ item.product__name }}</div>
+                            <div class="progress mt-1" style="height: 4px; width: 100px; background: #222;">
+                                <div class="progress-bar bg-warning" style="width: 70%"></div>
+                            </div>
                         </div>
                     </div>
+                    <span class="badge bg-white bg-opacity-5 text-white">{{ item.total_qty }}</span>
                 </div>
                 {% empty %}
-                <div style="text-align: center; width: 100%; padding: 50px; color: #95a5a6;">
-                    <p>لا توجد طلبات نشطة حالياً</p>
+                <div class="text-center py-5">
+                    <i class="fas fa-ghost d-block mb-3 text-muted fs-2"></i>
+                    <p class="text-muted small">لا مبيعات اليوم</p>
                 </div>
                 {% endfor %}
             </div>
-        </main>
+        </div>
+
     </div>
 </div>
 {% endblock %}
