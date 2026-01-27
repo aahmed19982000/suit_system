@@ -176,11 +176,10 @@ def customer_history(request, customer_id):
 
 @login_required
 def pos_page(request):
-    # بدلاً من المنتجات، سنجلب أصناف المخزن المتوفرة
-    # سنفترض أنك تريد عرض الأصناف التي كميتها أكبر من 0 أو كلها
-    products = InventoryItem.objects.all() 
+    # جلب الأصناف التي كميتها أكبر من 0 فقط
+    products = InventoryItem.objects.filter(quantity__gt=0) 
     
-    # جلب تصنيفات المواد الخام/المخزن
+    # جلب باقي البيانات كالمعتاد
     categories = IngredientCategory.objects.all() 
     sizes = Size_choices.objects.all()
     colors = Colors_choices.objects.all()
@@ -1081,4 +1080,44 @@ def rental_items_list(request):
         'items': items,
         'stats': stats,
         'statuses': statuses,
+    })
+
+
+import qrcode
+import io
+import base64
+def item_details_view(request, pk):
+    # جلب القطعة المادية (التي لها UID)
+    rental_piece = get_object_or_404(RentalItem, pk=pk)
+    
+    # الوصول لبيانات الصنف في المخزن عبر ForeignKey
+    inventory_data = rental_piece.item 
+    
+    # جلب سجل الحجز لهذه القطعة تحديداً
+    usage_history = RentalOrder.objects.filter(item=rental_piece).select_related('customer', 'status').order_by('-rental_date')
+    
+    # إحصائيات القطعة
+    stats = {
+        'times_rented': usage_history.count(),
+        'total_revenue': usage_history.aggregate(Sum('total_price'))['total_price__sum'] or 0,
+        'penalties': usage_history.aggregate(Sum('late_damage_penalty'))['late_damage_penalty__sum'] or 0,
+    }
+
+    # إنشاء QR Code يحتوي على الـ UID الفريد للقطعة
+    qr_data = f"ID:{rental_piece.id} | UID:{rental_piece.UID} | Code:{inventory_data.rental_code}"
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+
+    return render(request, 'pos/item_detail.html', {
+        'rental_piece': rental_piece,
+        'inv': inventory_data,
+        'history': usage_history,
+        'stats': stats,
+        'qr_code': qr_code_base64,
     })

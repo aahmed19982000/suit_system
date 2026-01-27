@@ -37,6 +37,7 @@ urlpatterns = [
     path('search-uid/', views.search_UID, name='search_UID'),
     path('rental_items/', views.all_rental_items, name='all_rental_items'),  
     path('rental_items/update_status/<int:pk>/', views.update_rental_status, name='update_rental_status'),
+    path('rental-item/<int:pk>/details/', views.item_details_view, name='item_details'),
     
     
 

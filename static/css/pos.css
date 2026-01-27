@@ -262,9 +262,82 @@ body {
 
 /* تصميم الفاتورة للطباعة */
 @media print {
+    @page { size: 80mm auto; margin: 0; }
     body * { visibility: hidden; }
     #receipt-print-area, #receipt-print-area * { visibility: visible; }
-    #receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    #receipt-print-area { 
+        display: block !important;
+        position: absolute; 
+        left: 0; 
+        top: 0; 
+        width: 76mm; /* تقليل العرض قليلاً لتجنب الهوامش */
+        background: #fff; 
+        color: #000;
+    }
+}
+
+/* تنسيق الفاتورة ليكون جريئاً وواضحاً */
+.receipt { 
+    width: 76mm; 
+    padding: 5px; 
+    font-family: 'Cairo', sans-serif; 
+    line-height: 1.4;
+}
+
+.receipt h2 { 
+    font-size: 22px; /* اسم المحل كبير جداً */
+    font-weight: 900; 
+    margin-bottom: 2px;
+}
+
+.receipt .center div { 
+    font-size: 14px; 
+    font-weight: 600; 
+}
+
+.receipt hr { 
+    border: none; 
+    border-top: 2px solid #000; /* خط فاصل أسود عريض */
+    margin: 8px 0; 
+}
+
+.info div { 
+    font-size: 13px; 
+    font-weight: 700; /* جعل النصوص الجانبية عريضة */
+    margin-bottom: 3px;
+}
+
+.receipt table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 5px;
+}
+
+.receipt th { 
+    font-size: 15px; 
+    border-bottom: 2px solid #000; 
+    padding: 5px 0;
+}
+
+.receipt td { 
+    font-size: 14px; 
+    font-weight: 600; 
+    padding: 6px 0;
+}
+
+.total-row td { 
+    font-size: 18px !important; /* تكبير الإجمالي جداً */
+    font-weight: 900 !important;
+    border-top: 2px solid #000;
+    padding-top: 10px;
+}
+
+.footer { 
+    font-size: 13px; 
+    font-weight: 700; 
+    margin-top: 15px; 
+    border-top: 1px dashed #000;
+    padding-top: 10px;
 }
 
 /* تخصيص السكرول بار ليناسب اللون الداكن */

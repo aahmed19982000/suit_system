@@ -146,7 +146,7 @@
             <h2 style="margin:2px 0;">كريم هريدي</h2>
             <div>محل بدل رجالي</div>
             <div>طريق أسيوط – سوهاج</div>
-            <div>📞 01030491917</div>
+            <div>📞 01002528882</div>
         </div>
 
         <hr>
@@ -274,69 +274,67 @@ document.getElementById('cashCheckout').onclick = () => { if (cart.length > 0) d
 
 function selectOrderType(type) { currentOrderType = type; closeModals(); if (type === 'table') finalizeOrder(); else document.getElementById('customerModal').style.display = 'flex'; }
 
-function finalizeOrder() {
-    // 1. جلب البيانات من الواجهة
+async function finalizeOrder() {
     const totalDisplay = document.getElementById('totalDisplay').innerText;
     const total = parseFloat(totalDisplay) || 0;
     
-    // جلب بيانات العميل من الحقول (سواء كانت فارغة أو ممتلئة)
     const customerData = {
-        phone: document.getElementById('custPhone') ? document.getElementById('custPhone').value : '',
-        name: document.getElementById('custName') ? document.getElementById('custName').value : '',
-        address: document.getElementById('custAddress') ? document.getElementById('custAddress').value : ''
+        phone: document.getElementById('custPhone')?.value || '',
+        name: document.getElementById('custName')?.value || '',
+        address: document.getElementById('custAddress')?.value || ''
     };
 
-    // 2. تجهيز الفاتورة للطباعة
-    document.getElementById('p-label').innerText = "فاتورة بيع نقدي";
-    document.getElementById('p-date').innerText = new Date().toLocaleString('ar-EG');
-    document.getElementById('p-total').innerText = total.toFixed(2);
-    document.getElementById('p-deposit-row').style.display = 'none';
-    document.getElementById('p-footer-policy').innerText = "الاستبدال خلال 14 يوم - يجب إحضار الفاتورة";
+    try {
+        // 1. إرسال البيانات للسيرفر أولاً لجلب رقم الطلب الحقيقي
+        const res = await fetch("{% url 'cash_checkout' %}", {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-CSRFToken': '{{ csrf_token }}' 
+            },
+            body: JSON.stringify({ 
+                cart: cart, 
+                total: total, 
+                order_type: currentOrderType,
+                customer_data: customerData 
+            })
+        });
 
-    // تعبئة عناصر الجدول في الطباعة
-    document.getElementById('p-items-body').innerHTML = cart.map(i => `
-        <tr>
-            <td>${i.name}</td>
-            <td style="text-align:center;">${i.qty}</td>
-            <td style="text-align:left;">${i.price.toFixed(2)}</td>
-        </tr>`).join('');
+        const data = await res.json();
 
-    // 3. أمر الطباعة
-    window.print();
-
-    // 4. إرسال البيانات للسيرفر (Back-end)
-    fetch("{% url 'cash_checkout' %}", {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json', 
-            'X-CSRFToken': '{{ csrf_token }}' 
-        },
-        body: JSON.stringify({ 
-            cart: cart, 
-            total: total, 
-            order_type: currentOrderType,
-            customer_data: customerData // إرسال بيانات العميل هنا هو المفتاح لحل مشكلتك
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => { throw err; });
-        }
-        return response.json();
-    })
-    .then(data => {
         if (data.status === 'success') {
-            alert("تم حفظ الطلب بنجاح");
-            location.reload(); // إعادة تحميل الصفحة لتفريغ السلة
+            // 2. تحديث بيانات الفاتورة في HTML برقم الطلب الراجع من السيرفر
+            document.getElementById('p-id').innerText = "#" + data.order_id; // هنا رقم الطلب الحقيقي
+            document.getElementById('p-label').innerText = "فاتورة بيع نقدي";
+            document.getElementById('p-date').innerText = new Date().toLocaleString('ar-EG');
+            document.getElementById('p-total').innerText = total.toFixed(2);
+            document.getElementById('p-deposit-row').style.display = 'none';
+            
+            // تعبئة الأصناف
+            document.getElementById('p-items-body').innerHTML = cart.map(i => `
+                <tr>
+                    <td>${i.name}</td>
+                    <td style="text-align:center;">${i.qty}</td>
+                    <td style="text-align:left;">${i.price.toFixed(2)}</td>
+                </tr>`).join('');
+
+            // 3. تشغيل الطباعة بعد تحديث البيانات
+            setTimeout(() => {
+                window.print();
+                alert("تم تسجيل الطلب رقم #" + data.order_id);
+                location.reload(); // إعادة التحميل بعد الطباعة
+            }, 500);
+
         } else {
             alert("خطأ: " + data.message);
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error:', error);
-        alert("حدث خطأ أثناء حفظ البيانات: " + (error.message || "اتصال السيرفر"));
-    });
+        alert("فشل الاتصال بالسيرفر");
+    }
 }
+
+
 function searchCustomer() {
     fetch("{% url 'search_customer' %}?phone=" + document.getElementById('custPhone').value)
     .then(res => res.json()).then(data => {

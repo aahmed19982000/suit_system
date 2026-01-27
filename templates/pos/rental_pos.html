@@ -175,6 +175,66 @@
         </div>
     </div>
 </div>
+<div id="receipt-print-area" style="display: none;">
+    <style>
+        @media print {
+            @page { size: 80mm auto; margin: 0; }
+            body * { visibility: hidden; }
+            #receipt-print-area, #receipt-print-area * { visibility: visible; }
+            #receipt-print-area { display: block !important; position: absolute; left: 0; top: 0; width: 76mm; font-family: 'Cairo', sans-serif; color: #000; }
+            .receipt-bold { font-weight: 900; }
+            .r-center { text-align: center; }
+            .r-hr { border: none; border-top: 2px solid #000; margin: 8px 0; }
+            .r-table { width: 100%; border-collapse: collapse; }
+            .r-table th, .r-table td { padding: 5px 0; font-size: 14px; text-align: right; border-bottom: 1px dashed #000; }
+        }
+    </style>
+    <div style="padding: 5px;">
+        <div class="r-center">
+            <h2 class="receipt-bold" style="font-size: 22px; margin: 0;">كريم هريدي</h2>
+            <div style="font-size: 16px;"><b> حجز وتأجير بدل</b></div>
+            <div style="font-size: 14px;">📞 <b>01002528882</b></div>
+        </div>
+        <div class="r-hr"></div>
+        <div style="font-size: 15px; background: #000; color: #fff; text-align: center; padding: 3px; margin-bottom: 5px;">
+            <b>رقم العملية: </b><span id="p-id">#--</span>
+        </div>
+        <div style="font-size: 13px;">
+            <div><b>العميل:</b> <span id="p-cust"></span></div>
+            <div><b>التاريخ:</b> <span id="p-date"></span></div>
+        </div>
+        <div class="r-hr"></div>
+        <table class="r-table">
+            <thead>
+                <tr>
+                    <th>الوصف (UID)</th>
+                    <th>السعر</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b id="p-item"></b><br><small id="p-details"></small></td>
+                    <td id="p-price" style="vertical-align: top;"></td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top: 10px; font-size: 15px;">
+            <div style="display:flex; justify-content: space-between;"><b>قيمة الإيجار:</b> <span id="p-total-price"></span></div>
+            <div style="display:flex; justify-content: space-between;"><b>مبلغ التأمين:</b> <span id="p-deposit"></span></div>
+            <div style="display:flex; justify-content: space-between; font-size: 18px;" class="receipt-bold"><b>الإجمالي المسدد:</b> <span id="p-paid"></span></div>
+        </div>
+        <div class="r-hr"></div>
+        <div style="font-size: 12px;">
+            <b>مواعيد الاستلام:</b> من <span id="p-start"></span> إلى <span id="p-end"></span><br>
+            <b>ملاحظات:</b> <span id="p-notes"></span>
+        </div>
+        <div class="r-center" style="margin-top: 15px; border-top: 1px solid #000; padding-top: 5px;">
+            <div class="receipt-bold" style="font-size: 14px;">يتم استرداد التأمين عند تسليم البدلة بحالتها</div>
+            <div style="font-size: 10px;">شكراً لزيارتكم 🌹</div>
+            <div style="font-size: 10px;">سيستم ادارة المحال التجارية تطوير /احمد ابراهيم 🌹</div>
+        </div>
+    </div>
+</div>
 
 <script>
 // (الدوال checkCustomer, checkUID, openModal تبقى كما هي)
@@ -261,21 +321,17 @@ async function submitBooking() {
         rental_date: document.getElementById('rDate').value,
         return_date: document.getElementById('retDate').value,
         total_price: document.getElementById('tPrice').value,
-        deposit_amount: document.getElementById('tDeposit').value, // مطابق للموديل
+        deposit_amount: document.getElementById('tDeposit').value,
         notes: document.getElementById('rNotes').value,
-        pants_size: document.getElementById('pantsSize').value, // الاسم الصحيح بدون كشيدة
+        pants_size: document.getElementById('pantsSize').value,
     };
 
     if (!payload.phone || !payload.uid || !payload.return_date) {
-        return alert("يرجى إكمال البيانات الأساسية (الهاتف، الكود، تاريخ العودة)");
-    }
-
-    if (!payload.customer_id && (!payload.customer_name || !payload.customer_address)) {
-        return alert("بالنسبة للعملاء الجدد، يجب إدخال الاسم والعنوان");
+        return alert("يرجى إكمال البيانات الأساسية");
     }
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'جاري الحفظ...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ والطباعة...';
 
     try {
         const res = await fetch("{% url 'rental_checkout' %}", {
@@ -284,17 +340,38 @@ async function submitBooking() {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
+        
         if (data.status === 'success') {
-            alert('✅ ' + data.message);
-            location.reload();
+            // --- تعبئة الفاتورة للطباعة ---
+            document.getElementById('p-id').innerText = "#" + data.order_id;
+            document.getElementById('p-cust').innerText = payload.customer_name || "عميل مسجل";
+            document.getElementById('p-date').innerText = new Date().toLocaleString('ar-EG');
+            document.getElementById('p-item').innerText = "بدلة كود: " + payload.uid;
+            document.getElementById('p-details').innerText = "مقاس جاكيت: " + document.getElementById('suitSize').options[document.getElementById('suitSize').selectedIndex].text + " | بنطلون: " + payload.pants_size;
+            document.getElementById('p-price').innerText = payload.total_price + " ج.م";
+            document.getElementById('p-total-price').innerText = payload.total_price + " ج.م";
+            document.getElementById('p-deposit').innerText = payload.deposit_amount + " ج.م";
+            document.getElementById('p-paid').innerText = (parseFloat(payload.total_price) + parseFloat(payload.deposit_amount || 0)) + " ج.م";
+            document.getElementById('p-start').innerText = payload.rental_date;
+            document.getElementById('p-end').innerText = payload.return_date;
+            document.getElementById('p-notes').innerText = payload.notes || "لا يوجد";
+
+            // --- تنفيذ الطباعة ---
+            setTimeout(() => {
+                window.print();
+                alert('✅ تم تسجيل الحجز بنجاح رقم #' + data.order_id);
+                location.reload();
+            }, 500);
+
         } else { 
             alert('❌ ' + data.message); 
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'تأكيد العملية وحفظ';
         }
     } catch (e) { 
         alert("خطأ في الاتصال بالسيرفر"); 
-    } finally { 
-        submitBtn.disabled = false; 
-        submitBtn.innerHTML = 'تأكيد العملية وحفظ'; 
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'تأكيد العملية وحفظ';
     }
 }
 </script>

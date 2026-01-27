@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    /* التنسيق العام لكارت الطباعة */
+    .print-label {
+        width: 100mm; /* عرض أكبر قليلاً ليستوعب التفاصيل */
+        padding: 20px;
+        border: 2px solid #000;
+        background: #fff;
+        margin: 0 auto;
+        color: black;
+        font-family: 'Arial', sans-serif;
+    }
+    .qr-img { width: 140px; height: 140px; margin-bottom: 10px; }
+    
+    /* إعدادات الطباعة الأساسية */
+    @media print {
+        body * { visibility: hidden; }
+        .print-area, .print-area * { visibility: visible; }
+        .print-area { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+        }
+        .no-print { display: none !important; }
+        .print-label { border: 2px solid #000 !important; box-shadow: none !important; }
+    }
+
+    /* تنسيق الجداول أو القوائم داخل الطباعة */
+    .print-details-table {
+        width: 100%;
+        margin-top: 10px;
+        border-collapse: collapse;
+        font-size: 14px;
+        text-align: right;
+    }
+    .print-details-table td {
+        padding: 5px;
+        border-bottom: 1px dashed #ccc;
+    }
+    .label-title { font-weight: bold; width: 40%; }
+
+    .detail-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .info-label { font-weight: bold; color: #555; }
+    .info-value { color: #000; font-size: 1.1em; }
+</style>
+
+<div class="container mt-4">
+    <div class="row no-print mb-4">
+        <div class="col-md-12 d-flex justify-content-between align-items-center">
+            <h3><i class="fas fa-print"></i> تجهيز تقرير وطباعة قطعة</h3>
+            <button onclick="window.print()" class="btn btn-dark">
+                <i class="fas fa-print"></i> تأكيد طباعة كافة التفاصيل
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-5 print-area">
+            <div class="print-label shadow-sm">
+                <div class="text-center">
+                    <h2 style="margin:0;">محل كريم هريدي للبدل الرجالي</h2>
+                    <p style="margin:0; font-size: 0.9em;">تقرير بيانات الصنف - نظام المخازن</p>
+                    <hr style="border-top: 2px solid #000;">
+                    
+                    <img src="data:image/png;base64,{{ qr_code }}" class="qr-img">
+                    <h3 style="margin: 5px 0;">{{ rental_piece.UID }}</h3>
+                </div>
+
+                <table class="print-details-table" dir="rtl">
+                    <tr>
+                        <td class="label-title">اسم الصنف:</td>
+                        <td>{{ inv.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-title">كود الإيجار:</td>
+                        <td style="font-family: monospace;">{{ inv.rental_code|default:"--" }}</td>
+                    </tr>
+                   
+                    <tr>
+                        <td class="label-title">المقاس واللون:</td>
+                        <td>{{ inv.size }} - {{ inv.color }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-title">سعر الوحدة:</td>
+                        <td><strong>{{ inv.unit_cost }} ج.م</strong></td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="label-title">تاريخ الطباعة:</td>
+                        <td style="font-size: 0.8em;">{{ inv.updated_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                </table>
+                
+                <div class="text-center mt-3" style="font-size: 0.7em; border-top: 1px solid #eee; padding-top: 5px;">
+                    تم التوليد بواسطة نظام إدارة المحال التجارية المطور من قبل  / احمد ابرهيم
+                </div>
+            </div>
+            <p class="no-print mt-3 text-muted text-center"><i class="fas fa-info-circle"></i> المعاينة أعلاه هي ما سيظهر في ورقة الطباعة.</p>
+        </div>
+
+        <div class="col-md-7 no-print">
+            <div class="detail-card p-4">
+                <h5 class="border-bottom pb-2 mb-3 text-primary">المعلومات الأساسية (عرض المتصفح)</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <span class="info-label">اسم الصنف:</span><br>
+                        <span class="info-value">{{ inv.name }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <span class="info-label">كود الصنف:</span><br>
+                        <span class="info-value">{{ inv.rental_code }}</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <span class="info-label">سعر الوحدة:</span><br>
+                        <span class="info-value text-success">{{ inv.unit_cost }} ج.م</span>
+                    </div>
+                    
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i> يمكنك استخدام الورقة المطبوعة كـ "كارت تعريف" شامل للقطعة داخل المخزن أو لتسليمها للعميل.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -55,6 +55,7 @@
                         <th>عدد الإيجارات</th>
                         <th>الربح المحقق</th>
                         <th>الحالة الحالية</th>
+                        <th> تفاصيل وطباعة</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -68,6 +69,11 @@
                             <span class="status-badge status-{{ item.status.id }}">
                                 {{ item.status.status }}
                             </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'item_details' item.id %}" class="uid-link">
+                                <span class="uid-tag">{{ item.UID }}</span>
+                            </a>
                         </td>
                     </tr>
                     {% empty %}
