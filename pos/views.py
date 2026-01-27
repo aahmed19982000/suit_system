@@ -882,27 +882,35 @@ def rental_checkout(request):
   
 
 def all_rental_items(request):
-    # 1. جلب المدخلات من البحث والفلتر
-    search_query = request.GET.get('search_id')
-    status_filter = request.GET.get('status_filter')
+    # 1. جلب المدخلات
+    search_query = request.GET.get('search_id', '')
+    status_filter = request.GET.get('status_filter', '')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
 
-    # 2. الاستعلام الأساسي مع تحسين الأداء
+    # 2. الاستعلام الأساسي
     items = RentalOrder.objects.select_related('customer', 'item__item', 'status').all().order_by('-id')
 
-    # 3. تطبيق البحث برقم الطلب (ID)
+    # 3. الفلترة المتقدمة
     if search_query:
-        items = items.filter(id=search_query)
+        items = items.filter(
+            Q(id__icontains=search_query) | 
+            Q(customer__name__icontains=search_query) | 
+            Q(item__UID__icontains=search_query)
+        )
 
-    # 4. تطبيق فلتر الحالة
     if status_filter:
         items = items.filter(status_id=status_filter)
 
-    # 5. إحصائيات احترافية
+    if start_date and end_date:
+        items = items.filter(rental_date__range=[start_date, end_date])
+
+    # 4. إحصائيات احترافية (تتأثر بالفلتر)
     stats = {
         'total_orders': items.count(),
         'total_revenue': items.aggregate(Sum('total_price'))['total_price__sum'] or 0,
-        'total_penalties': items.aggregate(Sum('late_damage_penalty'))['late_damage_penalty__sum'] or 0,
-        'late_count': items.filter(status__status="متاخر").count(), # تأكد من المسمى لديك
+        'total_deposit': items.aggregate(Sum('deposit_amount'))['deposit_amount__sum'] or 0,
+        'late_count': items.filter(status__status__icontains="متاخر").count(),
     }
 
     all_statuses = Rental_status_choices.objects.all()
@@ -911,8 +919,12 @@ def all_rental_items(request):
         'items': items,
         'all_statuses': all_statuses,
         'stats': stats,
-        'status_filter': status_filter
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'start_date': start_date,
+        'end_date': end_date
     })
+
 
 def update_rental_status(request, pk):
     if request.method == 'POST':
@@ -920,70 +932,69 @@ def update_rental_status(request, pk):
         status_id = request.POST.get('status_id')
         
         if status_id:
-            # جلب الحالة الجديدة التي اختارها المستخدم من القائمة (مثلاً "تم الاستلام")
             new_status = get_object_or_404(Rental_status_choices, pk=status_id)
             today = timezone.now().date()
 
-            # التحقق: إذا كان المستخدم يغير الحالة إلى "تم الاستلام"
+            # منطق الاستلام
             if new_status.status == "تم الاستلام":
                 rental.actual_return_date = today
                 
-                # مقارنة تاريخ اليوم بتاريخ العودة المتوقع
+                # فحص التأخير لإظهار رسالة فقط وليس لتغيير الحالة
                 if today > rental.return_date:
-                    # إذا كان متأخراً، نبحث عن حالة "متأخر" لتعيينها بدلاً من "تم الاستلام"
-                    try:
-                        late_status = Rental_status_choices.objects.get(status="متأخر")
-                        rental.status = late_status
-                        messages.warning(request, f"تم تسجيل العودة، ولكن العميل متأخر عن الموعد!")
-                    except Rental_status_choices.DoesNotExist:
-                        rental.status = new_status
-                else:
-                    # إذا لم يتأخر، نعتمد حالة "تم الاستلام"
-                    rental.status = new_status
+                    days_late = (today - rental.return_date).days
+                    messages.warning(request, f"تم الاستلام، ولكن العميل متأخر بـ {days_late} يوم!")
+                
+                rental.status = new_status
             else:
-                # لأي حالة أخرى (محجوز، منفذ، إلخ) يتم التحديث طبيعي
+                # إذا غيرت الحالة لشيء آخر، نمسح تاريخ العودة الفعلي
+                rental.actual_return_date = None
                 rental.status = new_status
             
             rental.save()
-            messages.success(request, "تم تحديث حالة الطلب بنجاح")
+            messages.success(request, "تم تحديث الحالة بنجاح")
             
     return redirect('all_rental_items')
 
+
 def edit_rental_order(request, pk):
     rental = get_object_or_404(RentalOrder, pk=pk)
+    # نحتفظ بالقيم القديمة قبل التعديل للمقارنة
+    old_penalty = rental.late_damage_penalty or 0
     
     if request.method == 'POST':
         form = RentalOrderForm(request.POST, instance=rental)
         
         if form.is_valid():
-            updated_order = form.save(commit=False)
-            
-            # منطق تاريخ العودة والحالة
-            if updated_order.status and updated_order.status.status == "تم الاستلام":
-                today = timezone.now().date()
-                updated_order.actual_return_date = today
+            with transaction.atomic():
+                updated_order = form.save(commit=False)
                 
-                if today > updated_order.return_date:
-                    try:
-                        # تأكد أن الكلمة مكتوبة "متاخر" أو "متأخر" كما في قاعدة بياناتك
-                        late_status = Rental_status_choices.objects.get(status="متاخر")
-                        updated_order.status = late_status
-                        messages.warning(request, "تنبيه: تم تغيير الحالة إلى 'متأخر' لوجود تأخير في الموعد.")
-                    except Rental_status_choices.DoesNotExist:
-                        messages.error(request, "خطأ: لم يتم العثور على حالة 'متاخر' في النظام.")
-            
-            updated_order.save()
-            messages.success(request, f"تم تحديث بيانات الطلب للعميل {rental.customer.name} بنجاح")
-            return redirect('all_rental_items')
+                # جلب القيمة الجديدة من الفورم
+                new_penalty = updated_order.late_damage_penalty or 0
+                
+                # إذا قام المستخدم بتغيير قيمة الغرامة
+                if new_penalty != old_penalty:
+                    # نحسب الفرق (الجديد - القديم) ونضيفه للإجمالي
+                    diff = new_penalty - old_penalty
+                    updated_order.total_price += diff
+                    
+                    if diff > 0:
+                        messages.info(request, f"تم إضافة {diff} ج.م إلى إجمالي الفاتورة.")
+                
+                # منطق التاريخ الفعلي عند تغيير الحالة لـ "تم الاستلام"
+                if updated_order.status and updated_order.status.status == "تم الاستلام":
+                    if not updated_order.actual_return_date:
+                        updated_order.actual_return_date = timezone.now().date()
+
+                updated_order.save()
+                messages.success(request, f"تم تحديث بيانات {rental.customer.name} بنجاح.")
+                return redirect('all_rental_items')
     else:
         form = RentalOrderForm(instance=rental)
 
-    # ملاحظة: إذا كان ملف HTML داخل مجلد اسمه pos، اجعلها 'pos/edit_rental.html'
     return render(request, 'pos/edit_rental.html', {
-    'form': form,
-    'rental': rental
-})
-
+        'form': form,
+        'rental': rental
+    })
 
 def search_UID(request):
     uid = request.GET.get('uid')

@@ -25,12 +25,62 @@
 
 {% block content %}
 <div class="rental-container">
-    <header class="page-header d-flex justify-content-between align-items-center">
-        <h2><i class="fas fa-suit"></i> سجل طلبات الإيجار</h2>
-        <div class="search-wrapper">
-            <input type="text" id="suitSearch" placeholder="ابحث باسم العميل، البدلة، أو الكود..." onkeyup="filterOrders()">
-        </div>
+    <header class="page-header">
+        <h2><i class="fas fa-suit"></i> لوحة تحكم الإيجارات</h2>
     </header>
+
+    <div class="stats-grid">
+        <div class="stat-card gold-border">
+            <div class="stat-icon">📋</div>
+            <div class="stat-info">
+                <span class="label">إجمالي الطلبات</span>
+                <strong class="value">{{ stats.total_orders }}</strong>
+            </div>
+        </div>
+        <div class="stat-card green-border">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+                <span class="label">إجمالي الإيرادات</span>
+                <strong class="value">{{ stats.total_revenue }} ج.م</strong>
+            </div>
+        </div>
+        <div class="stat-card blue-border">
+            <div class="stat-icon">🛡️</div>
+            <div class="stat-info">
+                <span class="label">تأمينات محتجزة</span>
+                <strong class="value">{{ stats.total_deposit }} ج.م</strong>
+            </div>
+        </div>
+        <div class="stat-card red-border">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+                <span class="label">طلبات متأخرة</span>
+                <strong class="value">{{ stats.late_count }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <section class="filter-bar">
+        <form method="GET" action="" class="filter-form">
+            <div class="filter-group">
+                <input type="text" name="search_id" placeholder="بحث باسم العميل أو الكود..." value="{{ search_query }}">
+            </div>
+            <div class="filter-group">
+                <select name="status_filter">
+                    <option value="">كل الحالات</option>
+                    {% for st in all_statuses %}
+                    <option value="{{ st.id }}" {% if status_filter == st.id|stringformat:"i" %}selected{% endif %}>{{ st.status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="date" name="start_date" value="{{ start_date }}">
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+            <button type="submit" class="btn-filter">تطبيق الفلتر</button>
+            <a href="{% url 'all_rental_items' %}" class="btn-reset">إعادة تعيين</a>
+        </form>
+    </section>
 
     <div class="rental-table-container">
         <table class="table" id="suitTable">
@@ -38,37 +88,31 @@
                 <tr>
                     <th>العميل</th>
                     <th>البدلة (UID)</th>
-                    <th>تاريخ الحجز</th>
+                    <th>تاريخ الإيجار</th>
                     <th>تاريخ العودة</th>
-                    <th>قيمة الإيجار</th>
+                    <th>الإيجار</th>
                     <th>التأمين</th>
                     <th>الحالة</th>
-                    <th>ملاحظات</th>
+                    <th>إجراءات</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr class="item-row row-{{ item.status.status }}" 
-                    data-name="{{ item.customer.name|lower }} {{ item.item.item.name|lower }} {{ item.item.UID|lower }}">                    
+                <tr class="item-row row-{{ item.status.status }}">                    
                     <td>
                         <strong>{{ item.customer.name }}</strong>
                         <br><small>{{ item.customer.mobil }}</small>
                     </td>
-                    
                     <td>
                         {{ item.item.item.name }}
-                        <br><small class="text-muted">{{ item.item.UID }}</small>
+                        <br><small class="text-gold">{{ item.item.UID }}</small>
                     </td>
-                    
                     <td>{{ item.rental_date|date:"Y-m-d" }}</td>
-                    
                     <td class="{% if item.status.status == 'متأخر' %}text-danger fw-bold{% endif %}">
                         {{ item.return_date|date:"Y-m-d" }}
                     </td>
-                    
-                    <td>{{ item.total_price }} ج.م</td>
+                    <td class="text-green">{{ item.total_price }} ج.م</td>
                     <td>{{ item.deposit_amount }} ج.م</td>
-                    
                     <td>
                         <form method="POST" action="{% url 'update_rental_status' item.id %}">
                             {% csrf_token %}
@@ -81,35 +125,16 @@
                             </select>
                         </form>
                     </td>
-
                     <td>
-                        {% if item.notes %}
-                            <span class="notes-tooltip" title="{{ item.notes }}">
-                                <i class="fas fa-comment-dots"></i>
-                            </span>
-                        {% else %}
-                            -
-                        {% endif %}
+                        <a href="{% url 'customer_history' item.customer.id %}" class="btn-view" title="سجل العميل">👤</a>
+                        <a href="{% url 'edit_rental_order' item.id %}" class="btn-edit">
+                            تعديل الطلب 📝
+                        </a>
                     </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="9" class="text-center py-5">لا توجد سجلات متاحة حالياً</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-
-<script>
-    function filterOrders() {
-        const input = document.getElementById('suitSearch').value.toLowerCase();
-        const rows = document.querySelectorAll('.item-row');
-        rows.forEach(row => {
-            const name = row.getAttribute('data-name');
-            row.style.display = name.includes(input) ? "" : "none";
-        });
-    }
-</script>
 {% endblock %}
