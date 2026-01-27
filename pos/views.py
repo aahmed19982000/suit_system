@@ -934,32 +934,42 @@ def update_rental_status(request, pk):
         if status_id:
             new_status = get_object_or_404(Rental_status_choices, pk=status_id)
             today = timezone.now().date()
-
-            # منطق الاستلام
-            if new_status.status == "تم الاستلام":
-                rental.actual_return_date = today
-                
-                # فحص التأخير لإظهار رسالة فقط وليس لتغيير الحالة
-                if today > rental.return_date:
-                    days_late = (today - rental.return_date).days
-                    messages.warning(request, f"تم الاستلام، ولكن العميل متأخر بـ {days_late} يوم!")
-                
-                rental.status = new_status
-            else:
-                # إذا غيرت الحالة لشيء آخر، نمسح تاريخ العودة الفعلي
-                rental.actual_return_date = None
-                rental.status = new_status
             
-            rental.save()
-            messages.success(request, "تم تحديث الحالة بنجاح")
+            # الاحتفاظ بالحالة القديمة قبل التحديث
+            old_status_name = rental.status.status if rental.status else ""
+            new_status_name = new_status.status
+
+            with transaction.atomic():
+                # 1. منطق حذف التأمين: إذا تغيرت الحالة من "محجوز" إلى أي حالة أخرى
+                if old_status_name == "محجوز" and new_status_name != "محجوز":
+                    rental.deposit_amount = Decimal('0.00')
+                    messages.info(request, "تم تصفير مبلغ التأمين تلقائياً لنقل الطلب من مرحلة الحجز.")
+
+                # 2. منطق تحديث التاريخ والحالة (الاستلام)
+                if new_status_name == "تم الاستلام":
+                    rental.actual_return_date = today
+                    
+                    if today > rental.return_date:
+                        days_late = (today - rental.return_date).days
+                        messages.warning(request, f"تم الاستلام، ولكن العميل متأخر بـ {days_late} يوم!")
+                else:
+                    # إذا تم التغيير لحالة غير "تم الاستلام" (مثل منفذ أو محجوز مرة أخرى)
+                    rental.actual_return_date = None
+                
+                # 3. حفظ التغييرات
+                rental.status = new_status
+                rental.save()
+                
+                messages.success(request, f"تم تحديث حالة طلب العميل {rental.customer.name} بنجاح")
             
     return redirect('all_rental_items')
 
 
 def edit_rental_order(request, pk):
     rental = get_object_or_404(RentalOrder, pk=pk)
-    # نحتفظ بالقيم القديمة قبل التعديل للمقارنة
+    # الاحتفاظ بالقيم القديمة للمقارنة
     old_penalty = rental.late_damage_penalty or 0
+    old_status_name = rental.status.status if rental.status else ""
     
     if request.method == 'POST':
         form = RentalOrderForm(request.POST, instance=rental)
@@ -968,25 +978,27 @@ def edit_rental_order(request, pk):
             with transaction.atomic():
                 updated_order = form.save(commit=False)
                 
-                # جلب القيمة الجديدة من الفورم
+                # 1. منطق الغرامة (إضافتها للإجمالي)
                 new_penalty = updated_order.late_damage_penalty or 0
-                
-                # إذا قام المستخدم بتغيير قيمة الغرامة
                 if new_penalty != old_penalty:
-                    # نحسب الفرق (الجديد - القديم) ونضيفه للإجمالي
                     diff = new_penalty - old_penalty
                     updated_order.total_price += diff
-                    
-                    if diff > 0:
-                        messages.info(request, f"تم إضافة {diff} ج.م إلى إجمالي الفاتورة.")
                 
-                # منطق التاريخ الفعلي عند تغيير الحالة لـ "تم الاستلام"
-                if updated_order.status and updated_order.status.status == "تم الاستلام":
+                # 2. منطق حذف التأمين عند تغيير الحالة من "محجوز"
+                new_status_name = updated_order.status.status if updated_order.status else ""
+                
+                # إذا كانت الحالة القديمة محجوز وتغيرت لأي شيء آخر
+                if old_status_name == "محجوز" and new_status_name != "محجوز":
+                    updated_order.deposit_amount = Decimal('0.00')
+                    messages.info(request, "تم حذف قيمة التأمين لتغير حالة الطلب من 'محجوز'.")
+
+                # 3. تحديث التاريخ الفعلي عند الاستلام
+                if new_status_name == "تم الاستلام":
                     if not updated_order.actual_return_date:
                         updated_order.actual_return_date = timezone.now().date()
 
                 updated_order.save()
-                messages.success(request, f"تم تحديث بيانات {rental.customer.name} بنجاح.")
+                messages.success(request, f"تم تحديث بيانات العميل {rental.customer.name} بنجاح.")
                 return redirect('all_rental_items')
     else:
         form = RentalOrderForm(instance=rental)
@@ -995,6 +1007,7 @@ def edit_rental_order(request, pk):
         'form': form,
         'rental': rental
     })
+
 
 def search_UID(request):
     uid = request.GET.get('uid')
