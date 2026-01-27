@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}سجل عمليات العميل - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<style>
+    /* تنسيق الحاوية الأساسية لتطابق الثيم الأسود */
+    .history-container { 
+        background-color: #000000; 
+        min-height: 100vh; 
+        padding: 30px; 
+        color: #ffffff; 
+        direction: rtl; 
+        font-family: 'Cairo', sans-serif;
+    }
+
+    /* رأس الصفحة وبيانات العميل */
+    .customer-header { 
+        background: #111111; 
+        padding: 25px; 
+        border-radius: 12px; 
+        border: 1px solid #222222; 
+        margin-bottom: 25px; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .customer-info h2 { margin: 0 0 10px 0; color: #ffffff; }
+    .customer-info p { margin: 0; color: #888888; font-size: 0.95rem; }
+
+    /* زر العودة */
+    .btn-back { 
+        background: #1a1a1a; 
+        color: #ffffff; 
+        padding: 10px 20px; 
+        border-radius: 8px; 
+        text-decoration: none; 
+        border: 1px solid #333333;
+        transition: 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-back:hover { background: #333333; }
+
+    /* الجدول الداكن */
+    .table-wrapper {
+        background: #111111;
+        border-radius: 12px;
+        border: 1px solid #222222;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .history-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        text-align: right;
+    }
+
+    .history-table th { 
+        background: #0a0a0a; 
+        padding: 18px; 
+        color: #3b82f6; /* لون أزرق للرؤوس */
+        font-weight: bold; 
+        border-bottom: 1px solid #222222; 
+        font-size: 0.9rem;
+    }
+
+    .history-table td { 
+        padding: 18px; 
+        border-bottom: 1px solid #222222; 
+        color: #eeeeee;
+        vertical-align: middle;
+    }
+
+    .history-table tr:hover { background: #181818; }
+
+    /* الشارات (Badges) */
+    .badge { 
+        padding: 5px 12px; 
+        border-radius: 6px; 
+        font-size: 0.8rem; 
+        font-weight: bold; 
+    }
+    .badge-بيع { 
+        background: rgba(59, 130, 246, 0.1); 
+        color: #3b82f6; 
+        border: 1px solid rgba(59, 130, 246, 0.3); 
+    }
+    .badge-إيجار { 
+        background: rgba(139, 92, 246, 0.1); 
+        color: #8b5cf6; 
+        border: 1px solid rgba(139, 92, 246, 0.3); 
+    }
+
+    /* مبالغ المال */
+    .price-tag { 
+        color: #10b981; 
+        font-weight: bold; 
+        font-family: monospace;
+        font-size: 1.1rem;
+    }
+
+    .status-text { color: #94a3b8; font-size: 0.9rem; }
+</style>
+
+<div class="history-container">
+    
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'customer_management' %}" class="btn-back">
+            <span>←</span> العودة لقائمة العملاء
+        </a>
+    </div>
+
+    <div class="customer-header">
+        <div class="customer-info">
+            <h2>سجل العمليات: {{ customer.name }}</h2>
+            <p>الهاتف: {{ customer.mobil }} | رقم العميل: #{{ customer.id }}</p>
+        </div>
+        <div class="stats-mini" style="text-align: left;">
+            <div style="color: #888; font-size: 0.8rem;">إجمالي الحركات</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;">{{ history|length }}</div>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>النوع</th>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ والوقت</th>
+                    <th>الحالة</th>
+                    <th>المبلغ الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in history %}
+                <tr>
+                    <td>
+                        <span class="badge badge-{{ item.type }}">
+                            {{ item.type }}
+                        </span>
+                    </td>
+                    <td style="font-family: monospace; color: #888;">#{{ item.id }}</td>
+                    <td>
+                        {# حل مشكلة الـ TypeError: تنسيق مختلف بناءً على نوع الحقل #}
+                        {% if item.type == 'بيع' %}
+                            {{ item.date|date:"d/m/Y - h:i A" }}
+                        {% else %}
+                            {{ item.date|date:"d/m/Y" }} 
+                            <small style="color: #444; margin-right: 5px;">(تاريخ فقط)</small>
+                        {% endif %}
+                    </td>
+                    <td class="status-text">{{ item.status }}</td>
+                    <td><span class="price-tag">{{ item.total }} ج.م</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 60px; color: #444;">
+                        <div style="font-size: 3rem; margin-bottom: 10px;">📋</div>
+                        لا توجد عمليات بيع أو إيجار مسجلة لهذا العميل.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

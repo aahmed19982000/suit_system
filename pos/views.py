@@ -21,7 +21,7 @@ from .models import (
     OrderItem, Status_order, InventoryItem, IngredientCategory ,RentalOrder ,RentalItem
 )
 from .forms import ProductForm , RentalOrderForm
-from categories.models import Category_products, Unit_choices, Size_choices, Colors_choices ,Rental_status_choices
+from categories.models import Category_products, Unit_choices, Size_choices, Colors_choices ,Rental_status_choices 
 from accounts.decorators import role_required
 
 User = get_user_model()
@@ -80,6 +80,98 @@ def customer_management(request):
     }
     return render(request, 'pos/customer_management.html', context)
 
+def customer_history(request, customer_id):
+    customer = get_object_or_404(Customer, id=customer_id)
+    now = timezone.now()
+    today = now.date()
+    
+    # استقبال الفلاتر من الرابط (동기화 مع منطق التقارير)
+    filter_type = request.GET.get('range', 'all') # جعلنا الافتراضي 'all' هنا لعرض السجل كاملاً
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    status_id = request.GET.get('status_id', 'all')
+    
+    # بناء الاستعلام الأساسي المرتبط بالعميل
+    query_sales = Q(customer=customer)
+    query_rentals = Q(customer=customer)
+
+    # --- منطق التواريخ (نفس لوجك التقارير) ---
+    if filter_type == 'today':
+        query_sales &= Q(created_at__date=today)
+        query_rentals &= Q(rental_date=today)
+        
+    elif filter_type == 'week':
+        one_week_ago = today - timedelta(days=7)
+        query_sales &= Q(created_at__date__gte=one_week_ago)
+        query_rentals &= Q(rental_date__gte=one_week_ago)
+        
+    elif filter_type == 'month':
+        query_sales &= Q(created_at__month=today.month, created_at__year=today.year)
+        query_rentals &= Q(rental_date__month=today.month, rental_date__year=today.year)
+        
+    elif filter_type == 'custom' and start_date and end_date:
+        query_sales &= Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        query_rentals &= Q(rental_date__gte=start_date, rental_date__lte=end_date)
+
+    # --- فلترة الحالة ---
+    if status_id != 'all':
+        query_sales &= Q(status_id=status_id)
+        query_rentals &= Q(status_id=status_id)
+
+    # جلب البيانات من الموديلات
+    sales_orders = Order.objects.filter(query_sales).select_related('status', 'user')
+    rental_orders = RentalOrder.objects.filter(query_rentals).select_related('status')
+
+    # حساب إحصائيات سريعة للعميل
+    total_spent = (sales_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0) + \
+                  (rental_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0)
+
+    combined_history = []
+    
+    # دمج المبيعات في القائمة
+    for o in sales_orders:
+        combined_history.append({
+            'id': o.id,
+            'date': o.created_at, # DateTimeField
+            'display_date': o.created_at.date(),
+            'type': 'بيع',
+            'status': o.status.status if o.status else 'مكتمل',
+            'total': o.total_price,
+            'color_class': 'badge-بيع'
+        })
+    
+    # دمج الإيجارات في القائمة بنفس منطق معالجة التاريخ في التقارير
+    for r in rental_orders:
+        if isinstance(r.rental_date, datetime):
+            r_datetime = r.rental_date if timezone.is_aware(r.rental_date) else timezone.make_aware(r.rental_date)
+            r_display = r.rental_date.date()
+        else:
+            # تحويل DateField إلى DateTimeField للترتيب الصحيح
+            r_datetime = timezone.make_aware(datetime.combine(r.rental_date, datetime.min.time()))
+            r_display = r.rental_date
+
+        combined_history.append({
+            'id': r.id,
+            'date': r_datetime,
+            'display_date': r_display,
+            'type': 'إيجار',
+            'status': r.status.status if r.status else 'قيد الإيجار',
+            'total': r.total_price,
+            'color_class': 'badge-إيجار'
+        })
+
+    # الترتيب النهائي (الأحدث أولاً)
+    combined_history = sorted(combined_history, key=lambda x: x['date'], reverse=True)
+
+    context = {
+        'customer': customer,
+        'history': combined_history,
+        'total_spent': total_spent,
+        'all_statuses': Status_order.objects.all(),
+        'filter_type': filter_type,
+        'selected_status': status_id,
+    }
+    return render(request, 'pos/customer_history.html', context)
 # ================= POS & ORDER VIEWS =================
 
 @login_required
@@ -108,57 +200,44 @@ def cash_checkout(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            is_rental = data.get('is_rental', False)
+            cust_data = data.get('customer_data') # تأكد من إرسالها من الـ JS
             
-            # --- الحالة الأولى: منطق تأجير البدلة (الجديد) ---
-            if data.get('is_rental'):
-                item_name = data.get('item_name')
-                price = data.get('price', 0)
-                deposit = data.get('deposit', 0)
-                sizes = data.get('sizes', 'غير محدد')
-                notes = data.get('notes', 'لا يوجد')
-                dates = f"من {data.get('start_date')} إلى {data.get('end_date')}"
-
-                with transaction.atomic():
-                    # إنشاء الطلب كعملية تأجير
-                    order = Order.objects.create(
-                        user=request.user,
-                        payment_method='cash',
-                        total_price=Decimal(str(price)),
-                        # نضع كل التفاصيل في حقل الوصف أو ملاحظات الطلب إذا كان متاحاً
-                        # هنا نستخدم f-string لجمع البيانات المطلوبة للطباعة والسجل
-                    )
-                    
-                    # ملاحظة: إذا كان لديك حقل ملاحظات في موديل Order يفضل تخزينه فيه
-                    # order.notes = f"تأجير: {item_name} | مقاسات: {sizes} | تأمين: {deposit} | فترة: {dates} | ملاحظات إضافية: {notes}"
-                    # order.save()
-
-                    return JsonResponse({
-                        'status': 'success', 
-                        'order_id': order.id,
-                        'message': 'تم تسجيل عملية التأجير بنجاح'
-                    })
-
-            # --- الحالة الثانية: منطق البيع المباشر (الكود الأصلي الخاص بك) ---
-            cart = data.get('cart', [])
-            total = data.get('total')
-            order_type = data.get('order_type')
-            cust_data = data.get('customer_data')
-
-            if not cart:
-                return JsonResponse({'status': 'error', 'message': 'السلة فارغة!'}, status=400)
-
             with transaction.atomic():
-                # 1. معالجة بيانات العميل
+                # --- 1. معالجة بيانات العميل (مشترك بين البيع والإيجار) ---
                 customer_obj = None
-                if order_type == 'delivery' and cust_data:
+                if cust_data and cust_data.get('phone'):
                     customer_obj, created = Customer.objects.get_or_create(
                         mobil=cust_data['phone'],
-                        defaults={'name': cust_data['name'], 'address': cust_data['address']}
+                        defaults={
+                            'name': cust_data.get('name', 'عميل جديد'),
+                            'address': cust_data.get('address', '')
+                        }
                     )
-                    customer_obj.number_of_orders = F('number_of_orders') + 1
-                    customer_obj.save()
+                    # تحديث العداد
+                    Customer.objects.filter(id=customer_obj.id).update(number_of_orders=F('number_of_orders') + 1)
 
-                # 2. إنشاء الطلب الرئيسي
+                # --- 2. منطق الإيجار ---
+                if is_rental:
+                    price = data.get('price', 0)
+                    item_name = data.get('item_name')
+                    order = Order.objects.create(
+                        user=request.user,
+                        customer=customer_obj, # ربط العميل هنا مهم جداً للسجل
+                        payment_method='cash',
+                        total_price=Decimal(str(price)),
+                        # إذا كان لديك حقل ملاحظات خزن فيه التفاصيل
+                        notes=f"تأجير: {item_name} | تأمين: {data.get('deposit')} | فترة: {data.get('start_date')} إلى {data.get('end_date')}"
+                    )
+                    return JsonResponse({'status': 'success', 'order_id': order.id})
+
+                # --- 3. منطق البيع المباشر ---
+                cart = data.get('cart', [])
+                total = data.get('total', 0)
+                
+                if not cart:
+                    return JsonResponse({'status': 'error', 'message': 'السلة فارغة!'}, status=400)
+
                 order = Order.objects.create(
                     user=request.user,
                     customer=customer_obj,
@@ -166,40 +245,29 @@ def cash_checkout(request):
                     total_price=Decimal(str(total)),
                 )
 
-                # 3. معالجة عناصر السلة والخصم من المخزن
                 for item in cart:
                     inv_item = InventoryItem.objects.select_for_update().get(id=item['id'])
                     qty_sold = Decimal(str(item['qty']))
 
                     if inv_item.quantity < qty_sold:
-                        return JsonResponse({
-                            'status': 'error', 
-                            'message': f'الكمية المتاحة من {inv_item.name} غير كافية (المتاح: {inv_item.quantity})'
-                        }, status=400)
+                        raise ValueError(f"الكمية غير كافية لصنف {inv_item.name}")
 
                     inv_item.quantity -= qty_sold
                     inv_item.save()
 
                     OrderItem.objects.create(
                         order=order,
-                        product_id=inv_item.id, 
+                        product=inv_item, 
                         price=Decimal(str(item['price'])),
                         quantity=qty_sold
                     )
 
-                return JsonResponse({
-                    'status': 'success', 
-                    'order_id': order.id,
-                    'message': 'تم تسجيل الطلب وتحديث المخزن'
-                })
+                return JsonResponse({'status': 'success', 'order_id': order.id})
 
-        except InventoryItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'أحد الأصناف غير موجود في المخزن'}, status=404)
         except Exception as e:
-            print(f"Checkout Error: {str(e)}")
-            return JsonResponse({'status': 'error', 'message': 'حدث خطأ أثناء المعالجة'}, status=500)
-
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid Method'}, status=405)
+
 
 def orders(request):
     user = request.user
@@ -533,37 +601,109 @@ def check_supplier_by_phone(request):
 
 def sales_reports(request):
     now = timezone.now()
+    today = now.date()
+    
     filter_type = request.GET.get('range', 'today')
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     staff_id = request.GET.get('staff_id', 'all')
+    status_id = request.GET.get('status_id', 'all')
     
-    query = Q()
-    if filter_type == 'today': query &= Q(created_at__date=now.date())
-    elif filter_type == 'week': query &= Q(created_at__gte=now - timedelta(days=7))
-    elif filter_type == 'month': query &= Q(created_at__month=now.month)
+    query_sales = Q()
+    query_rentals = Q()
+
+    # --- تصحيح منطق التواريخ باستخدام __date لضمان المقارنة الصحيحة ---
+    if filter_type == 'today':
+        query_sales &= Q(created_at__date=today)
+        query_rentals &= Q(rental_date=today) # تمت إزالة __date لأن الحقل DateField أصلاً
+        
+    elif filter_type == 'week':
+        one_week_ago = today - timedelta(days=7)
+        query_sales &= Q(created_at__date__gte=one_week_ago)
+        query_rentals &= Q(rental_date__gte=one_week_ago) # تمت إزالة __date
+        
+    elif filter_type == 'month':
+        query_sales &= Q(created_at__month=today.month, created_at__year=today.year)
+        query_rentals &= Q(rental_date__month=today.month, rental_date__year=today.year)
+        
     elif filter_type == 'custom' and start_date and end_date:
-        query &= Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        query_sales &= Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        query_rentals &= Q(rental_date__gte=start_date, rental_date__lte=end_date)
+    # --- فلترة الحالة (Status) ---
+    if status_id != 'all':
+        query_sales &= Q(status_id=status_id)
+        query_rentals &= Q(status_id=status_id)
 
-    if not (hasattr(request.user, 'role') and request.user.role == 'manager'):
-        query &= Q(user=request.user)
+    # --- التحقق من الصلاحيات ---
+    is_manager = hasattr(request.user, 'role') and request.user.role == 'manager'
+    if not is_manager:
+        query_sales &= Q(user=request.user)
+        # إذا كان الـ RentalOrder يحتوي على حقل user، قم بإلغاء التعليق عن السطر التالي:
+        # query_rentals &= Q(user=request.user) 
     elif staff_id != 'all':
-        query &= Q(user_id=staff_id)
+        query_sales &= Q(user_id=staff_id)
 
-    report_orders = Order.objects.filter(query)
-    best_sellers = OrderItem.objects.filter(order__in=report_orders).values('product__name').annotate(total_qty=Sum('quantity')).order_by('-total_qty')[:5]
+    # جلب البيانات
+    sales_orders = Order.objects.filter(query_sales).select_related('status', 'user')
+    rental_orders = RentalOrder.objects.filter(query_rentals).select_related('status')
+
+    # حساب الإحصائيات
+    total_sales_val = sales_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0
+    total_rentals_val = rental_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0
+    grand_total = total_sales_val + total_rentals_val
+    total_count = sales_orders.count() + rental_orders.count()
+
+    combined_orders = []
+    
+    # مبيعات
+    for o in sales_orders.order_by('-created_at')[:20]:
+        combined_orders.append({
+            'id': o.id,
+            'date': o.created_at,
+            'display_date': o.created_at.date(),
+            'type': 'بيع',
+            'status': o.status.status if o.status else 'مكتمل',
+            'total': o.total_price
+        })
+    
+    # إيجارات
+    for r in rental_orders.order_by('-rental_date')[:20]:
+        # معالجة التاريخ ليكون datetime متوافق مع الترتيب
+        if isinstance(r.rental_date, datetime):
+            r_datetime = r.rental_date if timezone.is_aware(r.rental_date) else timezone.make_aware(r.rental_date)
+            r_display = r.rental_date.date()
+        else:
+            r_datetime = timezone.make_aware(datetime.combine(r.rental_date, datetime.min.time()))
+            r_display = r.rental_date
+
+        combined_orders.append({
+            'id': r.id,
+            'date': r_datetime,
+            'display_date': r_display,
+            'type': 'إيجار',
+            'status': r.status.status if r.status else 'قيد الإيجار',
+            'total': r.total_price
+        })
+
+    combined_orders = sorted(combined_orders, key=lambda x: x['date'], reverse=True)[:30]
 
     context = {
         'stats': {
-            'total_sales': report_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0,
-            'orders_count': report_orders.count(),
-            'avg_order': report_orders.aggregate(Avg('total_price'))['total_price__avg'] or 0,
+            'total_sales': grand_total,
+            'sales_only': total_sales_val,
+            'rentals_only': total_rentals_val,
+            'orders_count': total_count,
+            'avg_order': grand_total / total_count if total_count > 0 else 0,
         },
-        'best_sellers': best_sellers,
-        'recent_orders': report_orders.order_by('-created_at')[:10],
-        'is_manager': getattr(request.user, 'role', '') == 'manager',
-        'staff_members': User.objects.all() if getattr(request.user, 'role', '') == 'manager' else None,
+        'best_sellers': OrderItem.objects.filter(order__in=sales_orders).values('product__name').annotate(total_qty=Sum('quantity')).order_by('-total_qty')[:5],
+        'recent_orders': combined_orders,
+        'is_manager': is_manager,
+        'staff_members': User.objects.all() if is_manager else None,
+        'all_statuses': Status_order.objects.all(), # تم استخدام الاسم الصحيح للموديل
         'filter_type': filter_type,
+        'selected_staff': staff_id,
+        'selected_status': status_id,
+        'now': now,
     }
     return render(request, 'pos/sales_reports.html', context)
 

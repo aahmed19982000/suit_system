@@ -33,6 +33,7 @@ urlpatterns = [
     path('rental/checkout/', views.rental_checkout, name='rental_checkout'),
     path('create_customer_ajax/', views.create_customer_ajax, name='create_customer_ajax'),
     path('search-customer/', views.search_customer, name='search_customer'),
+    path('customers/history/<int:customer_id>/', views.customer_history, name='customer_history'),
     path('search-uid/', views.search_UID, name='search_UID'),
     path('rental_items/', views.all_rental_items, name='all_rental_items'),  
     path('rental_items/update_status/<int:pk>/', views.update_rental_status, name='update_rental_status'),
