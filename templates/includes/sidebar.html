@@ -53,12 +53,7 @@
                     </ul>
                 </li>
 
-                <li>
-                    <a href="{% url 'menu_management' %}" class="{% if request.resolver_match.url_name == 'menu_management' %}active{% endif %}">
-                        <span class="icon">👔</span>
-                        <span class="text">إدارة القائمة</span>
-                    </a>
-                </li>
+               
 
                 <li>
                     <a href="{% url 'inventory_management' %}" class="{% if request.resolver_match.url_name == 'inventory_management' %}active{% endif %}">

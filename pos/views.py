@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import models
-from django.db.models import Sum, Avg, Q, F
+from django.db.models import Sum, Avg, Q, F , Value, CharField
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -271,14 +271,49 @@ def cash_checkout(request):
 def orders(request):
     user = request.user
     staff_members = None
-    if hasattr(user, 'role') and user.role == 'manager':
-        all_orders = Order.objects.all().prefetch_related('items__product').order_by('-created_at')
-        staff_members = User.objects.all()
-    else:
-        all_orders = Order.objects.filter(user=user).prefetch_related('items__product').order_by('-created_at')
     
-    total_sales = all_orders.aggregate(Sum('total_price'))['total_price__sum']
-    return render(request, 'pos/orders.html', {'orders': all_orders, 'total_sales': total_sales or 0, 'staff_members': staff_members})
+    # جلب طلبات البيع
+    sale_orders = Order.objects.all() if hasattr(user, 'role') and user.role == 'manager' else Order.objects.filter(user=user)
+    sale_orders = sale_orders.annotate(order_type=Value('sale', output_field=CharField()))
+
+    # جلب طلبات الإيجار (بما أن RentalOrder ليس له حقل user مباشرة، سنفترض أنه مرتبط بالموظف الذي أنشأه أو نعرضه للكل للمدير)
+    # ملاحظة: إذا كان RentalOrder يحتوي على حقل user، قم بفلترته مثل الطلبات العادية
+    rental_orders = RentalOrder.objects.all().annotate(order_type=Value('rental', output_field=CharField()))
+    
+    # دمج القائمتين وتحويلهما لـ list للترتيب
+    all_orders = sorted(
+        list(sale_orders) + list(rental_orders),
+        key=lambda x: (
+            x.created_at.date() if hasattr(x, 'created_at') else x.rental_date
+        ),
+        reverse=True
+    )
+
+    if hasattr(user, 'role') and user.role == 'manager':
+        staff_members = User.objects.all()
+
+    # حساب إجمالي المبيعات (البيع + الإيجار)
+    total_sales = (sale_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0) + \
+                  (rental_orders.aggregate(Sum('total_price'))['total_price__sum'] or 0)
+
+    return render(request, 'pos/orders.html', {
+        'orders': all_orders, 
+        'total_sales': total_sales, 
+        'staff_members': staff_members
+    })
+
+def print_invoice(request, order_id):
+    # جلب الطلب وإضافة علامة 'sale' ليتعرف عليها القالب الموحد
+    order = get_object_or_404(Order, id=order_id)
+    order.order_type = 'sale' 
+    return render(request, 'pos/print_invoice.html', {'order': order})
+
+# وظيفة طباعة عقد الإيجار
+def print_rental_contract(request, order_id):
+    # جلب طلب الإيجار وإضافة علامة 'rental' ليتعرف عليها القالب الموحد
+    order = get_object_or_404(RentalOrder, id=order_id)
+    order.order_type = 'rental'
+    return render(request, 'pos/print_invoice.html', {'order': order})
 
 @login_required
 def order_detail(request, order_id):

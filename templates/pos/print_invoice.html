@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>طباعة العملية #{{ order.id }}</title>
+    <style>
+        @media print { .no-print { display: none; } }
+        body { font-family: 'Arial', sans-serif; width: 80mm; margin: 0 auto; padding: 5px; color: #000; line-height: 1.4; }
+        .text-center { text-align: center; }
+        .header h1 { font-size: 26px; margin: 0; font-weight: 800; }
+        .header p { margin: 2px 0; font-size: 16px; font-weight: bold; }
+        
+        .divider { border-top: 1px dashed #000; margin: 5px 0; }
+        .solid-line { border-top: 3px solid #000; margin: 8px 0; }
+        
+        .info-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 10px 0; }
+        .info-table td:last-child { text-align: left; font-weight: bold; }
+
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .items-table th { border-bottom: 1px dashed #000; padding: 5px 0; text-align: right; font-size: 16px; }
+        .items-table td { padding: 5px 0; font-size: 15px; vertical-align: top; }
+        
+        .price-details { font-size: 17px; margin-top: 10px; }
+        .price-row { display: flex; justify-content: space-between; padding: 3px 0; }
+        .total-row { display: flex; justify-content: space-between; font-size: 22px; font-weight: 900; margin-top: 5px; padding: 5px 0; border-top: 1px solid #000; }
+
+        .footer { font-size: 13px; margin-top: 15px; border-top: 2px solid #000; padding-top: 10px; font-weight: bold; }
+        .rental-note { font-size: 16px; font-weight: 900; margin: 10px 0; }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <div class="header text-center">
+        <h1>كريم هريدي</h1>
+        <p>{% if order.order_type == 'rental' %}حجز وتأجير بدل{% else %}محل بدل رجالي{% endif %}</p>
+        {% if order.order_type == 'sale' %}<p>طريق أسيوط - سوهاج</p>{% endif %}
+        <p>📞 01002528882</p>
+    </div>
+
+    <div class="solid-line"></div>
+
+    <table class="info-table">
+        <tr>
+            <td>رقم العملية:</td>
+            <td>#{{ order.id }}</td>
+        </tr>
+        {% if order.order_type == 'rental' %}
+        <tr>
+            <td>العميل:</td>
+            <td>{{ order.customer.name }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td>التاريخ:</td>
+            <td>
+                {% if order.order_type == 'sale' %}
+                    {{ order.created_at|date:"Y/m/d h:i A" }}
+                {% else %}
+                    {{ order.rental_date|date:"Y/m/d" }}
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>النوع:</td>
+            <td>{% if order.order_type == 'sale' %}فاتورة بيع نقدي{% else %}عقد إيجار بدل{% endif %}</td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 60%;">{% if order.order_type == 'sale' %}الصنف{% else %}الوصف (UID){% endif %}</th>
+                <th class="text-center">{% if order.order_type == 'sale' %}ك{% else %}{% endif %}</th>
+                <th style="text-align: left;">{% if order.order_type == 'sale' %}ج{% else %}السعر{% endif %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if order.order_type == 'sale' %}
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td class="text-center">{{ item.quantity }}</td>
+                    <td style="text-align: left;">{{ item.price }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td>
+                        <strong>بدلة كود: {{ order.item.item.code|default:"RENT-9DA5950F" }}</strong><br>
+                        <small>مقاس: {{ order.size.size }} | بنطلون: {{ order.pants_size }}</small>
+                    </td>
+                    <td></td>
+                    <td style="text-align: left;">{{ order.total_price }} ج.م</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="solid-line"></div>
+
+    <div class="price-details">
+        {% if order.order_type == 'sale' %}
+            <div class="total-row">
+                <span>الإجمالي</span>
+                <span>{{ order.total_price }} ج.م</span>
+            </div>
+        {% else %}
+            <div class="price-row">
+                <span>قيمة الإيجار:</span>
+                <span>{{ order.total_price }} ج.م</span>
+            </div>
+            <div class="price-row">
+                <span>مبلغ التأمين:</span>
+                <span>{{ order.deposit_amount }} ج.م</span>
+            </div>
+            <div class="total-row">
+                <span>الإجمالي المسدد:</span>
+                <span>{{ order.total_price|add:order.deposit_amount }} ج.م</span>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if order.order_type == 'rental' %}
+    <div class="solid-line"></div>
+    <div style="font-size: 14px;">
+        <div><strong>مواعيد الاستلام:</strong> من {{ order.rental_date|date:"d-m-Y" }} إلى {{ order.return_date|date:"d-m-Y" }}</div>
+        <div><strong>ملاحظات:</strong> {{ order.notes|default:"لا يوجد" }}</div>
+    </div>
+    {% endif %}
+
+    <div class="footer text-center">
+        {% if order.order_type == 'rental' %}
+            <p class="rental-note">يتم استرداد التأمين عند تسليم البدلة بحالتها</p>
+        {% endif %}
+        <p>شكراً لزيارتكم 🌹</p>
+        <p>{% if order.order_type == 'sale' %}الاستبدال خلال 14 يوم{% else %}سيستم إدارة المحال التجارية{% endif %}</p>
+        <p style="font-size: 11px;">تطوير / احمد ابراهيم 🌹</p>
+    </div>
+
+</body>
+</html>
