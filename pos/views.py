@@ -80,6 +80,7 @@ def customer_management(request):
     }
     return render(request, 'pos/customer_management.html', context)
 
+@role_required('manager')
 def customer_history(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id)
     now = timezone.now()
@@ -325,6 +326,7 @@ def order_detail(request, order_id):
 
 @login_required
 @require_POST
+@role_required('manager')
 def process_order_action(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     action = request.POST.get('action')
@@ -375,6 +377,7 @@ def menu_management(request, product_id=None):
 from django.db.models import F, Q
 from django.utils.dateparse import parse_date # لإصلاح تنسيق التاريخ
 
+@role_required('manager')
 def inventory_management(request):
     items = InventoryItem.objects.all().order_by('-updated_at') # الترتيب من الأحدث
     
@@ -436,6 +439,8 @@ def inventory_management(request):
         'end_date': end_date,
     }
     return render(request, 'pos/inventory_management.html', context)
+
+@role_required('manager')
 @require_POST
 def add_inventory_item(request):
     try:
@@ -492,7 +497,7 @@ def add_inventory_item(request):
         messages.error(request, f'حدث خطأ: {str(e)}')
         return redirect('inventory_management')
 
-
+@role_required('manager')
 @require_POST
 def update_inventory_quantity(request):
     if request.method == "POST":
@@ -537,6 +542,7 @@ def update_inventory_quantity(request):
 
     return JsonResponse({'status': 'error', 'message': 'طلب غير مسموح'}, status=405)# ================= SUPPLIER MANAGEMENT =================
 
+@role_required('manager')
 def supplies_management(request):
     if request.method == "POST":
         name = request.POST.get('name')
@@ -560,7 +566,7 @@ def supplies_management(request):
     }
     return render(request, 'pos/supplies_management.html', context)
 
-
+@role_required('manager')
 def delete_supplier(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
     supplier.delete()
@@ -769,7 +775,7 @@ def edit_supply_log(request, log_id):
     return redirect('supplies_management')
 
 
-
+@role_required('manager')
 # 1. دالة تعديل بيانات الصنف (الاسم والأسعار)
 def edit_inventory_item(request):
     if request.method == "POST":
