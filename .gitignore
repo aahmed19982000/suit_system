@@ -1,0 +1,31 @@
+# --- [1] Python Files ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# --- [2] Django Specific ---
+db.sqlite3
+/staticfiles/
+/media/
+
+# --- [3] PyInstaller (EXE Build Outputs) ---
+# هذه أهم نقطة بناءً على صورك لتجنب رفع نواتج التحويل
+/build/
+/dist/
+*.spec
+
+# --- [4] Node Modules (Frontend) ---
+# يظهر في صورك أنك تستخدم node_modules
+node_modules/
+
+# --- [5] IDEs & System Files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- [6] Project Specific ---
+# ملفات اختيارية قد ترغب في عدم رفعها إذا كانت تحتوي على بيانات حساسة
+.env

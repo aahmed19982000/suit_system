@@ -1,45 +1,130 @@
-/* تنسيقات صفحة إدارة العملاء */
-.admin-container { padding: 30px; background-color: #f8f9fa; direction: rtl; }
+/* ألوان النظام الداكن المأخوذة من واجهتك */
+:root {
+  --bg-body: #000000;
+  --bg-card: #111111;
+  --bg-input: #0a0a0a;
+  --border-color: #222222;
+  --text-main: #ffffff;
+  --text-muted: #888888;
+  --primary-blue: #3b82f6;
+  --danger-red: #ff4d4d;
+}
 
-/* Header */
-.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-.btn-add-customer { background: #4a90e2; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.admin-container {
+  background-color: var(--bg-body);
+  min-height: 100vh;
+  padding: 30px;
+  direction: rtl;
+  color: var(--text-main);
+}
 
-/* Stats Grid */
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-.stat-card { background: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.stat-label { color: #7f8c8d; font-size: 0.85rem; display: block; }
-.stat-value { font-size: 1.5rem; color: #2c3e50; margin: 5px 0; display: block; }
-.stat-trend.up { color: #27ae60; font-size: 0.8rem; font-weight: bold; }
-.stat-icon { width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-.stat-icon.blue { background: #e3f2fd; } .stat-icon.purple { background: #f3e5f5; } 
-.stat-icon.green { background: #e8f5e9; } .stat-icon.orange { background: #fff3e0; }
+/* تحسين الكروت العلوية */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
 
-/* Search and Filters */
-.filter-section { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 20px; }
-.search-box { position: relative; flex: 1; }
-.search-box input { width: 100%; padding: 12px 45px 12px 15px; border-radius: 10px; border: 1px solid #ddd; background: white; }
-.search-icon { position: absolute; right: 15px; top: 12px; color: #bdc3c7; }
-.filter-tabs { display: flex; gap: 10px; }
-.tab-btn { padding: 8px 18px; border-radius: 20px; border: 1px solid #ddd; background: white; cursor: pointer; }
-.tab-btn.active { background: #2c3e50; color: white; border-color: #2c3e50; }
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-/* Data Table */
-.table-wrapper { background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
-.data-table { width: 100%; border-collapse: collapse; text-align: right; }
-.data-table th { padding: 15px; color: #7f8c8d; font-weight: 500; border-bottom: 1px solid #eee; }
-.data-table td { padding: 15px; border-bottom: 1px solid #f9f9f9; vertical-align: middle; }
+.card-blue { border-right: 4px solid #3b82f6; }
+.card-purple { border-right: 4px solid #8b5cf6; }
+.card-green { border-right: 4px solid #10b981; }
+.card-orange { border-right: 4px solid #f59e0b; }
 
-/* User Cell */
-.user-cell { display: flex; align-items: center; gap: 12px; }
-.user-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.user-meta strong { display: block; color: #2c3e50; font-size: 0.95rem; }
-.user-meta span { color: #95a5a6; font-size: 0.8rem; }
+.stat-value { font-size: 1.8rem; font-weight: bold; display: block; color: var(--text-main); }
+.stat-label { color: var(--text-muted); font-size: 0.9rem; }
 
-.loyalty-points { background: #fff8e1; color: #f39c12; padding: 4px 10px; border-radius: 6px; font-weight: bold; }
-.btn-details { color: #3498db; background: none; border: none; cursor: pointer; font-size: 0.9rem; }
+/* شريط البحث والتبويبات */
+.filter-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+}
 
-/* Footer */
-.table-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px; }
-.page-num, .page-nav { padding: 5px 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; margin: 0 2px; }
-.page-num.active { background: #3498db; color: white; border-color: #3498db; }
+.search-input-container {
+  position: relative;
+  width: 400px;
+}
+
+.search-input-container input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 12px 40px 12px 15px;
+  border-radius: 8px;
+  color: white;
+}
+
+.search-i { position: absolute; right: 15px; top: 12px; filter: grayscale(1); }
+
+.tab-btn {
+  padding: 10px 20px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.tab-btn.active { background: var(--primary-blue); color: white; }
+
+/* الجدول الداكن */
+.table-wrapper {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.data-table { width: 100%; border-collapse: collapse; }
+
+.data-table th {
+  background: #0a0a0a;
+  color: var(--text-muted);
+  padding: 15px;
+  text-align: right;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table td {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table tr:hover { background: #181818; }
+
+/* عناصر الجدول */
+.user-avatar {
+  width: 40px; height: 40px;
+  background: #222;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold; color: var(--primary-blue);
+  margin-left: 10px;
+}
+
+.user-info-cell { display: flex; align-items: center; }
+.user-details small { color: var(--text-muted); display: block; }
+
+.badge-count { background: #222; padding: 4px 12px; border-radius: 20px; color: #10b981; }
+.points-star { color: #f59e0b; }
+
+.btn-details { background: #1a1a1a; color: #3b82f6; border: 1px solid #333; padding: 6px 15px; border-radius: 6px; cursor: pointer; }
+.btn-delete { background: #1a1a1a; color: #ff4d4d; border: 1px solid #333; padding: 6px 15px; border-radius: 6px; cursor: pointer; margin-right: 5px; }
+
+.text-center { text-align: center; }
