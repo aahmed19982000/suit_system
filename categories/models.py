@@ -48,11 +48,7 @@ class CustomHoliday(models.Model):
         return f"{self.user.username} - {self.date}"
     
 
-class contract_details(models.Model):
-    details = models.CharField(verbose_name="تفاصيل العقد")
 
-    def __str__(self):
-        return self.details[:50]  
     
 
 class contract_duration(models.Model):

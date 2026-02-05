@@ -136,7 +136,8 @@
                     <th>الصنف</th>
                     <th>الوحدة</th>
                     <th>المورد</th>
-                    <th>تكلفة التوريد</th>
+                    <th>المقاس</th>
+                    <th>اللون</th>
                     <th>سعر البيع</th>
                     <th>الكمية</th>
                     <th>حد الطلب</th>
@@ -149,7 +150,9 @@
                     <td><strong>{{ item.name }}</strong></td>
                     <td><span class="unit-badge">{{ item.unit }}</span></td>
                     <td><span class="table-text-muted">{{ item.Supplier.name|default:"-" }}</span></td>
-                    <td><span class="price-text">{{ item.supply_cost }} ج.م</span></td>
+                    <td><span class="price-text">{{ item.size }} </span></td>
+                    <td><span class="price-text">{{ item.color }} </span></td>
+                    
                     <td><span class="price-text-gold">{{ item.unit_cost }} ج.م</span></td>
                     <td>
                         <div class="status-badge-luxury {% if item.quantity <= item.min_limit %}status-red{% else %}status-green{% endif %}">
