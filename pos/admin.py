@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Order, OrderItem ,InventoryItem , RentalOrder , RentalItem ,Supplier , Customer
+from .models import Product, Order, OrderItem ,InventoryItem , RentalOrder , RentalItem ,Supplier , Customer , ItemVariant
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'price', 'available')  # الأعمدة اللي تظهر في القائمة
@@ -17,13 +17,14 @@ class OrderAdmin(admin.ModelAdmin):
 admin.site.register(Order, OrderAdmin)
 
 
+class ItemVariantInline(admin.TabularInline):
+    model = ItemVariant
+    extra = 1 # عدد الأسطر الفارغة التي تظهر للإضافة
+
+@admin.register(InventoryItem)
 class InventoryItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'min_limit', 'unit')  # الأعمدة اللي تظهر في القائمة
-    list_filter = ('name', 'category')                                 # فلتر حسب المستخدم وطريقة الدفع
-    search_fields = ('name',)                                      # البحث حسب اسم المستخدم
-
-admin.site.register(InventoryItem, InventoryItemAdmin)
-
+    inlines = [ItemVariantInline]
+    list_display = ('name', 'category', 'total_quantity', 'Supplier')
 
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ('order', 'product', 'quantity', 'price')  # الأعمدة اللي تظهر في القائمة

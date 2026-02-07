@@ -51,58 +51,47 @@ class Supplier(models.Model):
 
 # --- 2. موديلات المخزن والتوريد ---
 
+from django.db import models
+import uuid
+
+# 1. المنتج الأساسي (المعلومات المشتركة)
 class InventoryItem(models.Model):
     name = models.CharField(max_length=200, verbose_name="اسم الصنف")
     category = models.ForeignKey(IngredientCategory, on_delete=models.CASCADE, related_name='items', verbose_name="الفئة")
-    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="الحجم")
-    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون")
-    quantity = models.PositiveIntegerField(verbose_name="الكمية الحالية")
-    min_limit = models.PositiveIntegerField(verbose_name="حد الطلب (الحد الأدنى)")
-    unit = models.ForeignKey(Unit_choices, on_delete=models.CASCADE, verbose_name="الوحدة")
-    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="سعر الوحدة")
-    supply_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="تكلفة التوريد")
-    profit = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="الربح المتوقع")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
     Supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="المورد")
+    unit = models.ForeignKey(Unit_choices, on_delete=models.CASCADE, verbose_name="الوحدة")
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="سعر البيع المقترح")
+    supply_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="تكلفة التوريد (للقطعة)")
     is_rental = models.BooleanField(default=False, verbose_name="هل الصنف للإيجار؟")
-    rental_code = models.CharField(max_length=20, unique=True, null=True, blank=True, editable=False, verbose_name="كود الصنف")
-   
-    def save(self, *args, **kwargs):
-        # حفظ الأساس أولاً
-        super().save(*args, **kwargs)
-
-        if self.is_rental:
-            # تحديث كود الصنف إذا لم يكن موجوداً
-            if not self.rental_code:
-                generated_code = f"RENT-{uuid.uuid4().hex[:12].upper()}"
-                InventoryItem.objects.filter(pk=self.pk).update(rental_code=generated_code)
-
-            # إدارة قطع الإيجار المادية (منع التكرار)
-            existing_count = RentalItem.objects.filter(item=self).count()
-            
-            # التعديل هنا: تحويل الناتج إلى رقم صحيح ليتوافق مع دالة range
-            needed = int(self.quantity) - int(existing_count)
-            
-            if needed > 0:
-                for _ in range(needed):
-                    RentalItem.objects.create(item=self)
-        else:
-            # تنظيف البيانات إذا تم إيقاف خيار الإيجار
-            if self.rental_code:
-                InventoryItem.objects.filter(pk=self.pk).update(rental_code=None)
-                RentalItem.objects.filter(item=self).delete()
-
-    @property
-    def total_value(self):
-        return self.quantity * self.unit_cost
-
-    @property
-    def is_low(self):
-        return self.quantity <= self.min_limit
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
 
+    @property
+    def total_quantity(self):
+        # مجموع الكميات من كل المقاسات والألوان
+        return sum(variant.quantity for variant in self.variants.all())
+
+# 2. المتغيرات (المقاسات والألوان لكل صنف)
+class ItemVariant(models.Model):
+    item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, related_name='variants')
+    size = models.ForeignKey(Size_choices, on_delete=models.CASCADE, verbose_name="المقاس")
+    color = models.ForeignKey(Colors_choices, on_delete=models.CASCADE, verbose_name="اللون")
+    quantity = models.PositiveIntegerField(default=0, verbose_name="الكمية الحالية")
+    min_limit = models.PositiveIntegerField(default=5, verbose_name="حد الطلب")
+    rental_code = models.CharField(max_length=50, unique=True, null=True, blank=True, editable=False)
+
+    def save(self, *args, **kwargs):
+        # توليد كود الإيجار تلقائياً لكل متغير إذا كان الصنف للإيجار
+        if self.item.is_rental and not self.rental_code:
+            self.rental_code = f"RENT-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.item.name} - {self.size} - {self.color}"
+    
+    
 class SupplyLog(models.Model):
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='supply_history', verbose_name="المورد")
     item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, null=True, blank=True, verbose_name="الصنف المورد")

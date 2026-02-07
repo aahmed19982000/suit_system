@@ -18,7 +18,7 @@ from decimal import Decimal, InvalidOperation
 # استيراد الموديلات
 from .models import (
     Product, Customer, Supplier, SupplyLog, Order, 
-    OrderItem, Status_order, InventoryItem, IngredientCategory ,RentalOrder ,RentalItem
+    OrderItem, Status_order, InventoryItem, IngredientCategory ,RentalOrder ,RentalItem ,ItemVariant
 )
 from .forms import ProductForm , RentalOrderForm
 from categories.models import Category_products, Unit_choices, Size_choices, Colors_choices ,Rental_status_choices 
@@ -177,10 +177,16 @@ def customer_history(request, customer_id):
 
 @login_required
 def pos_page(request):
-    # جلب الأصناف التي كميتها أكبر من 0 فقط
-    products = InventoryItem.objects.filter(quantity__gt=0) 
+    # نقوم بجلب المنتجات وحساب مجموع كميات كل المتغيرات (مقاسات وألوان) التابعة لها
+    # ونسمي النتيجة 'quantity' لضمان عمل ملف الـ HTML والـ JavaScript دون تعديل
+    products = InventoryItem.objects.annotate(
+        total_available=Sum('variants__quantity')
+    ).filter(total_available__gt=0)
     
-    # جلب باقي البيانات كالمعتاد
+    # لضمان عدم حدوث خطأ إذا كان ملف الـ HTML يبحث عن كلمة quantity تحديداً:
+    for product in products:
+        product.quantity = product.total_available
+
     categories = IngredientCategory.objects.all() 
     sizes = Size_choices.objects.all()
     colors = Colors_choices.objects.all()
@@ -192,8 +198,6 @@ def pos_page(request):
         'colors': colors
     })
 
-
-
 @csrf_exempt
 @login_required
 def cash_checkout(request):
@@ -201,7 +205,7 @@ def cash_checkout(request):
         try:
             data = json.loads(request.body)
             is_rental = data.get('is_rental', False)
-            cust_data = data.get('customer_data') # تأكد من إرسالها من الـ JS
+            cust_data = data.get('customer_data') 
             
             with transaction.atomic():
                 # --- 1. معالجة بيانات العميل (مشترك بين البيع والإيجار) ---
@@ -214,7 +218,7 @@ def cash_checkout(request):
                             'address': cust_data.get('address', '')
                         }
                     )
-                    # تحديث العداد
+                    # تحديث عداد الطلبات للعميل
                     Customer.objects.filter(id=customer_obj.id).update(number_of_orders=F('number_of_orders') + 1)
 
                 # --- 2. منطق الإيجار ---
@@ -223,10 +227,9 @@ def cash_checkout(request):
                     item_name = data.get('item_name')
                     order = Order.objects.create(
                         user=request.user,
-                        customer=customer_obj, # ربط العميل هنا مهم جداً للسجل
+                        customer=customer_obj,
                         payment_method='cash',
                         total_price=Decimal(str(price)),
-                        # إذا كان لديك حقل ملاحظات خزن فيه التفاصيل
                         notes=f"تأجير: {item_name} | تأمين: {data.get('deposit')} | فترة: {data.get('start_date')} إلى {data.get('end_date')}"
                     )
                     return JsonResponse({'status': 'success', 'order_id': order.id})
@@ -246,18 +249,23 @@ def cash_checkout(request):
                 )
 
                 for item in cart:
-                    inv_item = InventoryItem.objects.select_for_update().get(id=item['id'])
+                    # التعديل هنا: نستخدم ItemVariant بدلاً من InventoryItem للوصول للكمية
+                    # 'id' القادم من السلة يجب أن يكون معرف المتغير (variant id)
+                    variant = ItemVariant.objects.select_for_update().get(id=item['id'])
                     qty_sold = Decimal(str(item['qty']))
 
-                    if inv_item.quantity < qty_sold:
-                        raise ValueError(f"الكمية غير كافية لصنف {inv_item.name}")
+                    # التحقق من الكمية في جدول المتغيرات
+                    if variant.quantity < qty_sold:
+                        raise ValueError(f"الكمية غير كافية لـ {variant.item.name} (مقاس: {variant.size.size})")
 
-                    inv_item.quantity -= qty_sold
-                    inv_item.save()
+                    # خصم الكمية من المتغير
+                    variant.quantity -= qty_sold
+                    variant.save()
 
+                    # إنشاء سجل تفاصيل الطلب وربطه بالمنتج الأساسي
                     OrderItem.objects.create(
                         order=order,
-                        product=inv_item, 
+                        product=variant.item, # نربط الطلب بالمنتج الأساسي المرتبط بهذا المتغير
                         price=Decimal(str(item['price'])),
                         quantity=qty_sold
                     )
@@ -266,8 +274,8 @@ def cash_checkout(request):
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
     return JsonResponse({'status': 'error', 'message': 'Invalid Method'}, status=405)
-
 
 def orders(request):
     user = request.user
@@ -379,44 +387,52 @@ from django.utils.dateparse import parse_date # لإصلاح تنسيق التا
 
 @role_required('manager')
 def inventory_management(request):
-    items = InventoryItem.objects.all().order_by('-updated_at') # الترتيب من الأحدث
+    # 1. التغيير الأساسي: البحث يبدأ من ItemVariant وليس InventoryItem
+    # نستخدم select_related لجلب بيانات الصنف الرئيسي والمورد في استعلام واحد (تحسين أداء)
+    items = ItemVariant.objects.select_related('item', 'item__category', 'size', 'color', 'item__Supplier').order_by('-item__updated_at')
     
     # استلام قيم البحث والفلاتر
     search_query = request.GET.get('search')
     category_filter = request.GET.get('category')
     size_filter = request.GET.get('size')
     color_filter = request.GET.get('color')
-    
-    # فلاتر التاريخ
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    # 1. تطبيق البحث النصي
+    # 2. تطبيق البحث النصي (نبحث في اسم الصنف الرئيسي أو كود الإيجار في المتغير)
     if search_query:
-        items = items.filter(Q(name__icontains=search_query) | Q(rental_code__icontains=search_query))
+        items = items.filter(
+            Q(item__name__icontains=search_query) | 
+            Q(rental_code__icontains=search_query)
+        )
 
-    # 2. تطبيق فلاتر الاختيار
+    # 3. تطبيق فلاتر الاختيار (لاحظ استخدام item__ للوصول للحقول في الموديل الرئيسي)
     if category_filter and category_filter != 'all':
-        items = items.filter(category_id=category_filter)
+        items = items.filter(item__category_id=category_filter)
     if size_filter and size_filter != 'all':
         items = items.filter(size_id=size_filter)
     if color_filter and color_filter != 'all':
         items = items.filter(color_id=color_filter)
 
-    # 3. تطبيق فلتر التاريخ (على تاريخ التحديث)
+    # 4. تطبيق فلتر التاريخ
     if start_date:
-        items = items.filter(updated_at__date__gte=start_date)
+        items = items.filter(item__updated_at__date__gte=start_date)
     if end_date:
-        items = items.filter(updated_at__date__lte=end_date)
+        items = items.filter(item__updated_at__date__lte=end_date)
 
-    # 4. حسابات الإحصائيات (تتأثر بالفلترة والتاريخ)
-    total_items_count = items.count()
+    # 5. حسابات الإحصائيات (تعديل طريقة الحساب لتناسب المتغيرات)
+    total_items_count = items.count() # عدد المتغيرات (ألوان ومقاسات) المفلترة
+    
+    # الكميات الناقصة بناءً على حد الطلب في كل متغير
     low_stock_count = items.filter(quantity__lte=F('min_limit')).count()
     
-    # إجمالي الأرباح المتوقعة للمجموعة المفلترة
-    total_expected_profit = sum(item.profit * item.quantity for item in items)
-    # إجمالي قيمة المخزون
-    inventory_value = sum(item.quantity * item.unit_cost for item in items)
+    # استخدام Aggregate أفضل للأداء من الدوران (Sum)
+    # إجمالي قيمة المخزون = كمية المتغير * سعر بيع الصنف الرئيسي
+    inventory_stats = items.aggregate(
+        total_value=Sum(F('quantity') * F('item__unit_cost')),
+        # الربح = (سعر البيع - تكلفة التوريد) * الكمية
+        total_profit=Sum((F('item__unit_cost') - F('item__supply_cost')) * F('quantity'))
+    )
 
     context = {
         'items': items,
@@ -428,8 +444,8 @@ def inventory_management(request):
         
         'total_items_count': total_items_count,
         'low_stock_count': low_stock_count,
-        'inventory_value': inventory_value,
-        'total_expected_profit': total_expected_profit, # أضفنا إحصائية الربح
+        'inventory_value': inventory_stats['total_value'] or 0,
+        'total_expected_profit': inventory_stats['total_profit'] or 0,
         
         'search_query': search_query,
         'selected_category': category_filter,
@@ -447,7 +463,7 @@ def add_inventory_item(request):
     if request.method == "POST":
         try:
             with transaction.atomic():
-                # 1. معالجة المورد
+                # 1. معالجة المورد (نفس منطقك السابق)
                 supplier_id = request.POST.get('Supplier')
                 new_supplier_name = request.POST.get('new_supplier_name')
                 supplier_phone = request.POST.get('supplier_phone_input')
@@ -461,58 +477,59 @@ def add_inventory_item(request):
                         defaults={'name': new_supplier_name}
                     )
 
-                # 2. جلب مصفوفات المتغيرات (المقاسات والألوان والكميات)
+                # 2. إنشاء الصنف الرئيسي (Master Product)
+                # نأخذ البيانات العامة مرة واحدة فقط
+                base_name = request.POST.get('name')
+                category_id = request.POST.get('category')
+                unit_id = request.POST.get('unit')
+                supply_cost = Decimal(request.POST.get('supply_cost') or 0)
+                unit_cost = Decimal(request.POST.get('unit_cost') or 0)
+                is_rental = request.POST.get('is_rental') == 'on'
+
+                master_item = InventoryItem.objects.create(
+                    name=base_name,
+                    category_id=category_id,
+                    unit_id=unit_id,
+                    supply_cost=supply_cost,
+                    unit_cost=unit_cost,
+                    Supplier=supplier,
+                    is_rental=is_rental
+                )
+
+                # 3. معالجة المتغيرات (المقاسات والألوان والكميات)
                 colors_ids = request.POST.getlist('variant_color[]')
                 sizes_ids = request.POST.getlist('variant_size[]')
                 quantities = request.POST.getlist('variant_quantity[]')
+                min_limit = Decimal(request.POST.get('min_limit') or 0)
 
-                # جلب البيانات المالية العامة
-                supply_cost = Decimal(request.POST.get('supply_cost') or 0)
-                unit_cost = Decimal(request.POST.get('unit_cost') or 0)
-                profit = Decimal(request.POST.get('profit') or 0)
-                paid_amount_total = Decimal(request.POST.get('paid_amount') or 0)
-                
                 total_qty_all = sum(Decimal(q or 0) for q in quantities)
+                paid_amount_total = Decimal(request.POST.get('paid_amount') or 0)
 
-                # 3. دوران لحفظ كل متغير كصنف مستقل
                 for c_id, s_id, qty in zip(colors_ids, sizes_ids, quantities):
                     if not qty or Decimal(qty) <= 0:
                         continue
 
                     current_qty = Decimal(qty)
                     
-                    # جلب كائنات الألوان والمقاسات باستخدام مسمياتك الخاصة
-                    color_obj = Colors_choices.objects.get(id=c_id)
-                    size_obj = Size_choices.objects.get(id=s_id)
-                    
-                    base_name = request.POST.get('name')
-                    # دمج الاسم (مثال: قميص - أحمر - XL)
-                    full_name = f"{base_name} - {color_obj.color} - {size_obj.size}"
-
-                    # إنشاء السجل في InventoryItem
-                    item = InventoryItem.objects.create(
-                        name=full_name,
-                        category_id=request.POST.get('category'),
-                        unit_id=request.POST.get('unit'),
-                        quantity=current_qty,
-                        min_limit=Decimal(request.POST.get('min_limit') or 0),
-                        unit_cost=unit_cost,
-                        supply_cost=supply_cost,
-                        Supplier=supplier,
-                        size_id=s_id, # استخدام الـ ID مباشرة من المصفوفة
+                    # إنشاء المتغير التابع للصنف الرئيسي
+                    variant = ItemVariant.objects.create(
+                        item=master_item,
                         color_id=c_id,
-                        profit=profit,
-                        is_rental=request.POST.get('is_rental') == 'on',
+                        size_id=s_id,
+                        quantity=current_qty,
+                        min_limit=min_limit
                     )
 
-                    # 4. تسجيل حركة التوريد المالية
+                    # 4. تسجيل حركة التوريد المالية (SupplyLog)
+                    # نربط الحركة بالصنف الرئيسي لسهولة التتبع المالي العام
                     if supplier:
                         item_total_cost = current_qty * supply_cost
+                        # توزيع المبلغ المدفوع بنسبة الكمية
                         item_paid = (current_qty / total_qty_all) * paid_amount_total if total_qty_all > 0 else 0
                         
                         SupplyLog.objects.create(
                             supplier=supplier,
-                            item=item,
+                            item=master_item,  # نربطه بالرئيسي
                             quantity_added=current_qty,
                             cost_at_time=supply_cost,
                             total_amount=item_total_cost,
@@ -520,7 +537,7 @@ def add_inventory_item(request):
                             remaining_amount=item_total_cost - item_paid
                         )
 
-                messages.success(request, 'تم إضافة الأصناف بنجاح وتحديث المخزن.')
+                messages.success(request, f'تم إضافة "{base_name}" مع {len(colors_ids)} متغيرات بنجاح.')
                 return redirect('inventory_management')
 
         except Exception as e:
@@ -528,82 +545,102 @@ def add_inventory_item(request):
             return redirect('inventory_management')
 
     return redirect('inventory_management')
-
 @role_required('manager')
 @require_POST
-def update_inventory_quantity(request): # حافظنا على نفس اسم الوظيفة بناءً على طلبك
+def update_inventory_quantity(request): 
     if request.method == "POST":
         item_id = request.POST.get('item_id')
         
-        # دالة تنظيف الأرقام كما هي في كودك
         def clean_decimal(val):
-            if not val: return Decimal('0')
+            if val is None or str(val).strip() == '' or str(val) == 'None': 
+                return None # نرجع None لنميز بين الحقل الفارغ والحقل الذي يحتوي على 0
             clean_val = "".join(filter(lambda x: x in "0123456789.", str(val)))
             return Decimal(clean_val) if clean_val else Decimal('0')
 
         try:
-            # جلب العنصر المراد تعديله
-            item = get_object_or_404(InventoryItem, id=item_id)
-
-            # 1. تعديل البيانات النصية والأساسية
-            item.name = request.POST.get('name', item.name)
-            
-            # تحديث المفاتيح الأجنبية (Foreign Keys) مع الحفاظ على مسميات الموديلات
-            if request.POST.get('category'):
-                item.category_id = request.POST.get('category')
-            if request.POST.get('unit'):
-                item.unit_id = request.POST.get('unit')
-            if request.POST.get('size'):
-                item.size_id = request.POST.get('size')
-            if request.POST.get('color'):
-                item.color_id = request.POST.get('color')
-
-            # 2. تعديل البيانات المالية
-            item.supply_cost = clean_decimal(request.POST.get('supply_cost'))
-            item.unit_cost = clean_decimal(request.POST.get('unit_cost'))
-            item.min_limit = clean_decimal(request.POST.get('min_limit'))
-            
-            # إعادة حساب الربح بناءً على القيم الجديدة
-            item.profit = item.unit_cost - item.supply_cost
-
-            # 3. تعديل الكمية مباشرة (وليس إضافة)
-            # إذا كنت تريد تعديل الكمية الكلية الموجودة في الجدول
-            if request.POST.get('quantity'):
-                item.quantity = clean_decimal(request.POST.get('quantity'))
-
-            # 4. حالة الإيجار
-            item.is_rental = request.POST.get('is_rental') == 'on'
-
-            # حفظ كل التعديلات في قاعدة البيانات
-            item.save()
-
-            # 5. تسجيل حركة توريد إذا كان هناك "كمية مضافة" (اختياري)
-            # إذا كان الفورم يحتوي على حقل "quantity_added" لإضافة كمية جديدة للمخزن الحالي
-            qty_added = clean_decimal(request.POST.get('quantity_added'))
-            paid_amount = clean_decimal(request.POST.get('paid_amount'))
-            
-            if qty_added > 0:
-                item.quantity += qty_added # إضافة على الكمية الحالية
-                item.save()
+            with transaction.atomic():
+                # محاولة الوصول للصنف
+                item = InventoryItem.objects.filter(id=item_id).first()
+                variant_obj = None
                 
-                if item.Supplier:
-                    SupplyLog.objects.create(
-                        supplier=item.Supplier,
-                        item=item,
-                        quantity_added=qty_added,
-                        cost_at_time=item.supply_cost,
-                        paid_amount=paid_amount
-                    )
+                if not item:
+                    variant_obj = ItemVariant.objects.filter(id=item_id).first()
+                    if variant_obj: 
+                        item = variant_obj.item
+                    else: 
+                        return JsonResponse({'status': 'error', 'message': 'الصنف غير موجود'}, status=404)
+                else:
+                    # إذا كان الـ ID المرسل يخص الـ Item، نحتاج لأي variant لنعرف المقاس واللون الافتراضي
+                    variant_obj = ItemVariant.objects.filter(item=item).first()
 
-            return JsonResponse({
-                'status': 'success', 
-                'message': f'تم تحديث بيانات الصنف "{item.name}" بنجاح'
-            })
+                # --- 1. تحديث بيانات الصنف الأساسية (الأسعار والاسم) ---
+                # يتم التحديث في كل الحالات (توريد أو تعديل) إذا أُرسلت القيم
+                new_name = request.POST.get('name')
+                if new_name: item.name = new_name
+                
+                new_supply_cost = clean_decimal(request.POST.get('supply_cost'))
+                new_unit_cost = clean_decimal(request.POST.get('unit_cost'))
+                
+                if new_supply_cost is not None: item.supply_cost = new_supply_cost
+                if new_unit_cost is not None: item.unit_cost = new_unit_cost
+                
+                item.save()
+
+                # --- 2. معالجة المقاس واللون ---
+                size_id = request.POST.get('size')
+                color_id = request.POST.get('color')
+
+                if not size_id or not color_id:
+                    if variant_obj:
+                        size_id = size_id or variant_obj.size_id
+                        color_id = color_id or variant_obj.color_id
+                
+                if not size_id or not color_id:
+                    return JsonResponse({'status': 'error', 'message': 'يجب اختيار المقاس واللون أولاً'}, status=400)
+
+                # --- 3. تحديث بيانات التعديل الشامل (الكمية + حد الطلب) ---
+                new_qty = clean_decimal(request.POST.get('quantity'))
+                new_min_limit = clean_decimal(request.POST.get('min_limit'))
+
+                variant, _ = ItemVariant.objects.get_or_create(
+                    item=item,
+                    size_id=size_id,
+                    color_id=color_id,
+                    defaults={'quantity': 0, 'min_limit': 0}
+                )
+
+                if new_qty is not None:
+                    variant.quantity = new_qty
+                
+                if new_min_limit is not None:
+                    variant.min_limit = new_min_limit # هذا يحل مشكلة الـ 5 التلقائية
+                
+                variant.save()
+
+                # --- 4. معالجة التوريد (إضافة كمية جديدة) ---
+                qty_added = clean_decimal(request.POST.get('quantity_added'))
+                if qty_added and qty_added > 0:
+                    variant.quantity += qty_added
+                    variant.save()
+                    
+                    if item.Supplier:
+                        # نستخدم سعر التوريد الجديد أو الحالي
+                        current_cost = new_supply_cost if new_supply_cost is not None else item.supply_cost
+                        
+                        SupplyLog.objects.create(
+                            supplier=item.Supplier,
+                            item=item,
+                            quantity_added=qty_added,
+                            cost_at_time=current_cost,
+                            paid_amount=clean_decimal(request.POST.get('paid_amount')) or Decimal('0')
+                        )
+
+                return JsonResponse({'status': 'success', 'message': 'تم تحديث البيانات والأسعار بنجاح'})
 
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': f'حدث خطأ: {str(e)}'}, status=400)
+            return JsonResponse({'status': 'error', 'message': f'خطأ داخلي: {str(e)}'}, status=400)
 
-    return JsonResponse({'status': 'error', 'message': 'طلب غير مسموح'}, status=405)
+    return JsonResponse({'status': 'error', 'message': 'Invalid Method'}, status=405)
 @role_required('manager')
 def supplies_management(request):
     if request.method == "POST":
@@ -855,9 +892,29 @@ def edit_inventory_item(request):
 def delete_inventory_item(request):
     if request.method == "POST":
         item_id = request.POST.get('item_id')
-        item = get_object_or_404(InventoryItem, id=item_id)
-        item.delete()
-        return JsonResponse({'status': 'success'})
+        try:
+            # 1. محاولة الحذف من جدول المتغيرات أولاً (السطر المحدد)
+            variant = ItemVariant.objects.filter(id=item_id).first()
+            if variant:
+                item = variant.item
+                variant.delete()
+                
+                # اختياري: إذا كان هذا هو آخر متغير للصنف، فهل تريد حذف الصنف الأب؟
+                if not ItemVariant.objects.filter(item=item).exists():
+                    item.delete()
+                
+                return redirect('inventory_management')
+            
+            # 2. إذا لم يكن متغيراً، ربما هو ID الصنف الأب نفسه
+            item = InventoryItem.objects.filter(id=item_id).first()
+            if item:
+                item.delete()
+                return redirect('inventory_management')
+            
+            return HttpResponse("الصنف غير موجود", status=404)
+        except Exception as e:
+            return HttpResponse(f"خطأ أثناء الحذف: {str(e)}", status=400)
+    return redirect('inventory_management')
     
 
 @require_POST

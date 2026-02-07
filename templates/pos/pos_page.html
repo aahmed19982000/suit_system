@@ -89,17 +89,30 @@
 
         <div class="products-layout" id="productsGrid">
             {% for item in products %} 
-            <div class="product-item" 
-                data-category="{{ item.category.id }}" 
-                data-size="{{ item.size.id }}" 
-                data-color="{{ item.color.id }}">
-                <div class="product-main-info">
-                    <h3 class="product-title">{{ item.name }}</h3>
-                    <div class="product-price-tag">{{ item.unit_cost }} <span>ج.م</span></div>
-                </div>
-                <p class="product-desc">المتاح: {{ item.quantity }} | مقاس: {{ item.size.size }}</p>
-                <button class="add-to-cart-btn" data-id="{{ item.id }}" data-name="{{ item.name }}" data-price="{{ item.unit_cost }}"> إضافة + </button>
-            </div>
+                {% for variant in item.variants.all %}
+                    {% if variant.quantity > 0 %}
+                    <div class="product-item" 
+                        data-category="{{ item.category.id }}" 
+                        data-size="{{ variant.size.id }}" 
+                        data-color="{{ variant.color.id }}">
+                        <div class="product-main-info">
+                            <h3 class="product-title">{{ item.name }}</h3>
+                            <div class="product-price-tag">{{ item.unit_cost }} <span>ج.م</span></div>
+                        </div>
+                        <p class="product-desc">
+                            المتاح: {{ variant.quantity }} | 
+                            مقاس: {{ variant.size.size }} | 
+                            لون: {{ variant.color.color }}
+                        </p>
+                        <button class="add-to-cart-btn" 
+                            data-id="{{ variant.id }}" 
+                            data-name="{{ item.name }} - {{ variant.size.size }}" 
+                            data-price="{{ item.unit_cost }}"> 
+                            إضافة + 
+                        </button>
+                    </div>
+                    {% endif %}
+                {% endfor %}
             {% endfor %}
         </div>
     </section>

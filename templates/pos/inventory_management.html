@@ -147,31 +147,28 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td><strong>{{ item.name }}</strong></td>
-                    <td><span class="unit-badge">{{ item.unit }}</span></td>
-                    <td><span class="table-text-muted">{{ item.Supplier.name|default:"-" }}</span></td>
-                    <td><span class="price-text">{{ item.size }} </span></td>
-                    <td><span class="price-text">{{ item.color }} </span></td>
+                    <td><strong>{{ item.item.name }}</strong></td> 
                     
-                    <td><span class="price-text-gold">{{ item.unit_cost }} ج.م</span></td>
+                    <td><span class="unit-badge">{{ item.item.unit }}</span></td>
+                    <td><span class="table-text-muted">{{ item.item.Supplier.name|default:"-" }}</span></td>
+                    
+                    <td><span class="price-text">{{ item.size.size }} </span></td>
+                    <td><span class="price-text">{{ item.color.color }} </span></td>
+                    
+                    <td><span class="price-text-gold">{{ item.item.unit_cost }} ج.م</span></td>
+                    
                     <td>
                         <div class="status-badge-luxury {% if item.quantity <= item.min_limit %}status-red{% else %}status-green{% endif %}">
                             {{ item.quantity|floatformat:2 }}
                         </div>
                     </td>
                     <td>
-                        <div class="status-badge-luxury {% if item.is_low %}status-red{% else %}status-green{% endif %}">
+                        <div class="status-badge-luxury {% if item.quantity <= item.min_limit %}status-red{% else %}status-green{% endif %}">
                             {{ item.min_limit }}
                         </div>
-                        {% if item.is_low %}
-                        <div style="color: #ff4757; font-size: 0.75rem; margin-top: 5px; font-weight: bold; display: flex; align-items: center; gap: 3px;">
-                            <span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
-                            يحتاج شراء
-                        </div>
-                        {% endif %}
                     </td>
                     <td class="text-center">
-                       <button onclick="openControlModal('{{ item.id }}', '{{ item.name }}', '{{ item.unit_cost }}', '{{ item.supply_cost }}', '{{ item.category.id }}', '{{ item.unit.id }}', '{{ item.size.id }}', '{{ item.color.id }}', '{{ item.quantity }}', '{{ item.min_limit }}')" class="btn-action-icon edit-btn">
+                        <button onclick="openControlModal('{{ item.id }}', '{{ item.item.name }}', '{{ item.item.unit_cost }}', '{{ item.item.supply_cost }}', '{{ item.item.category.id }}', '{{ item.item.unit.id }}', '{{ item.size.id }}', '{{ item.color.id }}', '{{ item.quantity }}', '{{ item.min_limit }}')" class="btn-action-icon edit-btn">
                             <span class="material-symbols-outlined">settings</span>
                         </button>
                     </td>
@@ -321,86 +318,90 @@
         </div>
 
         <div id="supply-tab" class="tab-content active">
-            <form id="supplyForm" action="{% url 'update_inventory' %}" method="POST">
-                {% csrf_token %}
-                <input type="hidden" name="item_id" id="control_item_id_supply">
-                <div class="form-group-luxury" style="margin-bottom: 15px;">
-                    <label class="form-label">الكمية الجديدة المضافة</label>
-                    <input name="quantity_added" type="number" step="0.01" class="form-input-luxury" required>
+            <form id="supplyForm" action="{% url 'update_inventory_quantity' %}" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="item_id" id="control_item_id_supply">
+            
+            <input type="hidden" name="unit_cost" id="supply_hidden_unit_cost">
+            <input type="hidden" name="supply_cost" id="supply_hidden_supply_cost">
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 </div>
-                <div class="form-group-luxury" style="margin-bottom: 20px;">
-                    <label class="form-label">المبلغ المدفوع للمورد</label>
-                    <input name="paid_amount" type="number" step="0.01" class="form-input-luxury" value="0">
-                </div>
-                <button type="button" onclick="submitSupplyAjax()" class="btn-primary-luxury full-width">تأكيد عملية التوريد</button>
+
+            <div class="form-group-luxury" style="margin-bottom: 15px;">
+                <label class="form-label">الكمية الجديدة المضافة</label>
+                <input name="quantity_added" type="number" step="0.01" class="form-input-luxury" required>
+            </div>
             </form>
         </div>
 
         <div id="edit-tab" class="tab-content">
-            <form id="editForm" action="{% url 'edit_inventory_item' %}" method="POST">
-                {% csrf_token %}
-                <input type="hidden" name="item_id" id="control_item_id_edit">
-                
-                <div class="form-group-luxury" style="margin-bottom: 12px;">
-                    <label class="form-label">اسم الصنف</label>
-                    <input name="name" type="text" id="edit_name_input" class="form-input-luxury" required>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <label class="form-label">الفئة</label>
-                        <select name="category" id="edit_category" class="form-select-luxury">
-                            {% for cat in categories %}<option value="{{ cat.id }}">{{ cat }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div style="flex: 1;">
-                        <label class="form-label">الوحدة</label>
-                        <select name="unit" id="edit_unit" class="form-select-luxury">
-                            {% for unit in units %}<option value="{{ unit.id }}">{{ unit }}</option>{% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <label class="form-label">المقاس</label>
-                        <select name="size" id="edit_size" class="form-select-luxury">
-                            {% for size in sizes %}<option value="{{ size.id }}">{{ size.size }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div style="flex: 1;">
-                        <label class="form-label">اللون</label>
-                        <select name="color" id="edit_color" class="form-select-luxury">
-                            {% for color in colors %}<option value="{{ color.id }}">{{ color.color }}</option>{% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <label class="form-label">الكمية الحالية</label>
-                        <input name="quantity" type="number" step="0.01" id="edit_quantity" class="form-input-luxury" style="border-color: #d4af37;">
-                    </div>
-                    <div style="flex: 1;">
-                        <label class="form-label">حد الطلب</label>
-                        <input name="min_limit" type="number" step="0.01" id="edit_min_limit" class="form-input-luxury">
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <div style="flex: 1;">
-                        <label class="form-label">سعر البيع</label>
-                        <input name="unit_cost" type="number" step="0.01" id="edit_unit_cost_input" class="form-input-luxury">
-                    </div>
-                    <div style="flex: 1;">
-                        <label class="form-label">تكلفة الشراء</label>
-                        <input name="supply_cost" type="number" step="0.01" id="edit_supply_cost_input" class="form-input-luxury">
-                    </div>
-                </div>
-
-                <button type="button" onclick="submitEditAjax()" class="btn-primary-luxury full-width" style="margin-top: 20px;">حفظ التغييرات الشاملة</button>
-            </form>
+    <form id="editForm" action="{% url 'update_inventory_quantity' %}" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="item_id" id="control_item_id_edit">
+        
+        <div class="form-group-luxury" style="margin-bottom: 12px;">
+            <label class="form-label">اسم الصنف</label>
+            <input name="name" type="text" id="edit_name_input" class="form-input-luxury" required>
         </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <div style="flex: 1;">
+                <label class="form-label">الفئة</label>
+                <select name="category" id="edit_category" class="form-select-luxury">
+                    {% for cat in categories %}<option value="{{ cat.id }}">{{ cat }}</option>{% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label class="form-label">الوحدة</label>
+                <select name="unit" id="edit_unit" class="form-select-luxury">
+                    {% for unit in units %}<option value="{{ unit.id }}">{{ unit }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <div style="flex: 1;">
+                <label class="form-label">المقاس</label>
+                <select name="size" id="edit_size" class="form-select-luxury">
+                    {% for size in sizes %}<option value="{{ size.id }}">{{ size.size }}</option>{% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label class="form-label">اللون</label>
+                <select name="color" id="edit_color" class="form-select-luxury">
+                    {% for color in colors %}<option value="{{ color.id }}">{{ color.color }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <div style="flex: 1;">
+                <label class="form-label">الكمية الحالية</label>
+                <input name="quantity" type="number" step="0.01" id="edit_quantity" class="form-input-luxury">
+            </div>
+            <div style="flex: 1;">
+                <label class="form-label">حد الطلب</label>
+                <input name="min_limit" type="number" step="0.01" id="edit_min_limit" class="form-input-luxury">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label class="form-label">سعر البيع</label>
+                <input name="unit_cost" type="number" step="0.01" id="edit_unit_cost_input" class="form-input-luxury">
+            </div>
+            <div style="flex: 1;">
+                <label class="form-label">تكلفة الشراء</label>
+                <input name="supply_cost" type="number" step="0.01" id="edit_supply_cost_input" class="form-input-luxury">
+            </div>
+        </div>
+
+        <button type="button" onclick="submitEditAjax()" class="btn-primary-luxury full-width" style="margin-top: 20px;">حفظ التغييرات الشاملة</button>
+    </form>
+</div>
+        
+    
 
         <div id="delete-tab" class="tab-content">
             <div style="text-align: center; padding: 20px;">
@@ -411,10 +412,7 @@
                 <form action="{% url 'delete_inventory_item' %}" method="POST">
                     {% csrf_token %}
                     <input type="hidden" name="item_id" id="control_item_id_final_delete">
-                    <div style="display: flex; gap: 10px; justify-content: center;">
-                        <button type="submit" class="btn-primary-luxury" style="background: #e74c3c; border-color: #e74c3c; flex: 1;">تأكيد الحذف</button>
-                        <button type="button" onclick="closeModal('controlModal')" class="btn-secondary-luxury" style="flex: 1;">إلغاء</button>
-                    </div>
+                    <button type="submit" class="btn-danger">تأكيد الحذف</button>
                 </form>
             </div>
         </div>
@@ -432,33 +430,41 @@
         const firstRow = container.querySelector('.variant-row');
         const newRow = firstRow.cloneNode(true);
         
-        // تفريغ المدخلات في الصف الجديد
-        newRow.querySelectorAll('input').forEach(input => input.value = '');
+        // تفريغ المدخلات في الصف الجديد لضمان عدم تكرار بيانات الصف الأول
+        newRow.querySelectorAll('input').forEach(input => {
+            input.value = '';
+            input.dataset.userEdited = ""; // إعادة تعيين حالة التعديل
+        });
         newRow.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
         
         container.appendChild(newRow);
-        attachQtyListeners(); // ربط الحسابات بالحقل الجديد
+        attachQtyListeners(); // ربط مستمعات الأحداث فوراً بالصف الجديد
     }
 
     function removeVariantRow(btn) {
-        const rows = document.querySelectorAll('.variant-row');
+        const container = document.getElementById('variants-container');
+        const rows = container.querySelectorAll('.variant-row');
+        
         if (rows.length > 1) {
             btn.closest('.variant-row').remove();
-            updateFinance(); // إعادة الحساب بعد الحذف
+            updateFinance(); // إعادة حساب الإجمالي بعد حذف صف
+        } else {
+            alert("يجب أن يحتوي الصنف على متغير واحد على الأقل (مقاس/لون)");
         }
     }
 
     // 2. ربط مستمعات الأحداث لكل حقول الكمية المضافة ديناميكياً
     function attachQtyListeners() {
         document.querySelectorAll('.qty-input-variant').forEach(input => {
-            input.removeEventListener('input', updateFinance); // منع التكرار
+            // إزالة المستمع القديم لتجنب تكرار التنفيذ (Double Firing)
+            input.removeEventListener('input', updateFinance); 
             input.addEventListener('input', updateFinance);
         });
     }
 
-    // 3. وظيفة الإرسال عبر AJAX (توريد كمية من صفحة الإدارة)
-    function submitSupplyAjax() {
-        const form = document.getElementById('supplyForm');
+    // 3. وظيفة الإرسال عبر AJAX (توريد كمية أو تعديل صنف)
+    function handleAjaxSubmit(formId, successCallback) {
+        const form = document.getElementById(formId);
         const formData = new FormData(form);
         
         fetch(form.action, {
@@ -469,167 +475,228 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                closeModal('controlModal');
+                if (successCallback) successCallback(data);
                 location.reload(); 
             } else {
-                alert("خطأ: " + data.message);
+                alert("خطأ: " + (data.message || "حدث خطأ غير متوقع"));
             }
         })
         .catch(error => {
             console.error("Error:", error);
-            alert("حدث خطأ في الاتصال بالسيرفر");
+            alert("حدث خطأ في الاتصال بالسيرفر، يرجى المحاولة لاحقاً");
         });
     }
 
-    // 4. الدوال الأساسية للنوافذ
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function submitSupplyAjax() {
+    const form = document.getElementById('supplyForm');
+    const formData = new FormData(form);
 
-    function openControlModal(id, name, unitCost, supplyCost, catId, unitId, sizeId, colorId, qty, minLimit) {
-    // تعبئة حقول التوريد
-    document.getElementById('control_item_id_supply').value = id;
-    
-    // تعبئة حقول التعديل الشامل
-    document.getElementById('control_item_id_edit').value = id;
-    document.getElementById('edit_name_input').value = name;
-    document.getElementById('edit_unit_cost_input').value = unitCost;
-    document.getElementById('edit_supply_cost_input').value = supplyCost;
-    document.getElementById('edit_category').value = catId;
-    document.getElementById('edit_unit').value = unitId;
-    document.getElementById('edit_size').value = sizeId;
-    document.getElementById('edit_color').value = colorId;
-    document.getElementById('edit_quantity').value = qty;
-    document.getElementById('edit_min_limit').value = minLimit;
-    
-    // تعبئة حقل الحذف
-    document.getElementById('control_item_id_final_delete').value = id;
-    
-    openModal('controlModal');
+    fetch("{% url 'update_inventory_quantity' %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
 }
 
+    function submitEditAjax() {
+    const form = document.getElementById('editForm');
+    const formData = new FormData(form);
+
+    // إضافة تأكيد للمستخدم قبل الإرسال
+    if(!confirm("هل أنت متأكد من حفظ التغييرات الشاملة على الصنف؟")) return;
+
+    fetch(form.action, { // سيذهب إلى update_inventory_quantity
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert("تم التحديث بنجاح");
+            location.reload();
+        } else {
+            // في حال وجود خطأ من السيرفر (مثل مشكلة السعر أو حد الطلب)
+            alert("فشل التحديث: " + data.message);
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("حدث خطأ تقني أثناء التحديث");
+    });
+}
+
+    // 4. الدوال الأساسية للنوافذ (Modals)
+    function openModal(id) { 
+        const modal = document.getElementById(id);
+        if(modal) modal.style.display = 'flex'; 
+    }
+    
+    function closeModal(id) { 
+        const modal = document.getElementById(id);
+        if(modal) modal.style.display = 'none'; 
+    }
+
+    function openControlModal(id, name, unitCost, supplyCost, catId, unitId, sizeId, colorId, qty, minLimit) {
+        // تعبئة المعرفات
+        const ids = ['control_item_id_supply', 'control_item_id_edit', 'control_item_id_final_delete', 'control_item_id_delete'];
+        ids.forEach(idName => {
+            let el = document.getElementById(idName);
+            if(el) el.value = id;
+        });
+
+        // تعبئة بيانات التعديل الشامل
+        if(document.getElementById('edit_name_input')) document.getElementById('edit_name_input').value = name;
+        if(document.getElementById('edit_unit_cost_input')) document.getElementById('edit_unit_cost_input').value = unitCost;
+        if(document.getElementById('edit_supply_cost_input')) document.getElementById('edit_supply_cost_input').value = supplyCost;
+        if(document.getElementById('edit_quantity')) document.getElementById('edit_quantity').value = qty;
+        if(document.getElementById('edit_min_limit')) document.getElementById('edit_min_limit').value = minLimit;
+
+        // --- الإضافة الجديدة: تعبئة الأسعار المخفية لتبويب التوريد ---
+        if(document.getElementById('supply_hidden_unit_cost')) document.getElementById('supply_hidden_unit_cost').value = unitCost;
+        if(document.getElementById('supply_hidden_supply_cost')) document.getElementById('supply_hidden_supply_cost').value = supplyCost;
+
+        // تعبئة القوائم
+        if(document.getElementById('edit_category')) document.getElementById('edit_category').value = catId;
+        if(document.getElementById('edit_unit')) document.getElementById('edit_unit').value = unitId;
+        if(document.getElementById('edit_size')) document.getElementById('edit_size').value = sizeId;
+        if(document.getElementById('edit_color')) document.getElementById('edit_color').value = colorId;
+        
+        if(document.getElementById('supply_size')) document.getElementById('supply_size').value = sizeId;
+        if(document.getElementById('supply_color')) document.getElementById('supply_color').value = colorId;
+
+        openModal('controlModal');
+    }
+
     function switchTab(evt, tabId) {
-        var contents = document.getElementsByClassName("tab-content");
-        for (var i = 0; i < contents.length; i++) contents[i].classList.remove("active");
-        var buttons = document.getElementsByClassName("tab-btn");
-        for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove("active");
+        const contents = document.getElementsByClassName("tab-content");
+        for (let content of contents) content.classList.remove("active");
+        
+        const buttons = document.getElementsByClassName("tab-btn");
+        for (let btn of buttons) btn.classList.remove("active");
+        
         document.getElementById(tabId).classList.add("active");
         evt.currentTarget.classList.add("active");
     }
 
-    // 5. وظيفة البحث عن المورد
+    // 5. وظيفة البحث عن المورد (محسنة)
     function searchSupplier() {
         const phone = document.getElementById('sup_phone_search').value.trim();
         const select = document.getElementById('supplier_select');
         const newFields = document.getElementById('new_supplier_fields');
         const phoneInput = document.getElementById('sup_phone_search');
 
-        if (!phone) return alert('يرجى إدخال رقم الهاتف أولاً');
+        if (!phone) {
+            alert('يرجى إدخال رقم الهاتف أولاً');
+            return;
+        }
 
-        fetch("{% url 'check_supplier_by_phone' %}?phone=" + phone)
+        fetch(`{% url 'check_supplier_by_phone' %}?phone=${phone}`)
             .then(res => res.json())
             .then(data => {
+                phoneInput.classList.remove('search-success', 'search-new');
                 if (data.found) {
                     select.value = data.id;
                     newFields.classList.add('hidden-field');
                     phoneInput.classList.add('search-success');
-                    phoneInput.classList.remove('search-new');
-                    alert('تم ربط المورد: ' + data.name);
+                    alert('تم العثور على المورد: ' + data.name);
                 } else {
                     select.value = "";
                     newFields.classList.remove('hidden-field');
                     phoneInput.classList.add('search-new');
-                    phoneInput.classList.remove('search-success');
                     document.getElementById('new_supplier_name').focus();
-                    alert('رقم هاتف جديد، يرجى كتابة اسم المورد');
+                    alert('رقم جديد. يرجى إدخال اسم المورد لحفظه');
                 }
             })
-            .catch(err => alert('خطأ في الاتصال'));
+            .catch(err => alert('خطأ في الاتصال بقاعدة البيانات'));
     }
 
-    // 6. حساب المبالغ والديون (محدث للتعامل مع المتغيرات)
+    // 6. منطق الحسابات المالية (Finance Logic)
     function updateFinance() {
-        // جمع كل الكميات من كافة الأسطر المضافة
-        let totalQty = 0;
-        document.querySelectorAll('.qty-input-variant').forEach(input => {
-            totalQty += parseFloat(input.value) || 0;
-        });
+    let totalQtyAdded = 0;
+    // نجمع الكميات المكتوبة في حقول "الكمية المضافة" (quantity_added)
+    document.querySelectorAll('input[name="quantity_added"]').forEach(input => {
+        totalQtyAdded += parseFloat(input.value) || 0;
+    });
 
-        const supplyCostInput = document.getElementById('main_supply_cost');
-        const unitCostInput = document.getElementById('main_unit_cost');
-        const totalDisplay = document.getElementById('calc_total_display');
-        const paidInput = document.getElementById('paid_amount_input');
-        const profitInput = document.querySelector('input[name="profit"]');
-
-        const supplyCost = parseFloat(supplyCostInput?.value) || 0;
-        const unitPrice = parseFloat(unitCostInput?.value) || 0;
-
-        // حساب الإجمالي الكلي للمورد
-        const total = (totalQty * supplyCost).toFixed(2);
-        if(totalDisplay) totalDisplay.value = total;
-        
-        // تحديث المدفوع تلقائياً إذا لم يقم المستخدم بتعديله
-        if(paidInput && (!paidInput.dataset.userEdited)) {
-            paidInput.value = total;
-        }
-
-        // حساب الربح لكل قطعة تلقائياً
-        if (profitInput) {
-            profitInput.value = (unitPrice - supplyCost).toFixed(2);
-        }
-
-        checkDebt();
+    // إذا لم يوجد حقل مصفوفة، نأخذ الكمية من الحقل الفردي (للتوافق القديم)
+    if (totalQtyAdded === 0) {
+        totalQtyAdded = parseFloat(document.getElementById('edit_quantity')?.value) || 0;
     }
+
+    const supplyCost = parseFloat(document.getElementById('edit_supply_cost_input')?.value) || 
+                      parseFloat(document.getElementById('main_supply_cost')?.value) || 0;
+    
+    const unitPrice = parseFloat(document.getElementById('edit_unit_cost_input')?.value) || 
+                     parseFloat(document.getElementById('main_unit_cost')?.value) || 0;
+
+    const totalDisplay = document.getElementById('calc_total_display');
+    const paidInput = document.getElementById('paid_amount_input');
+    const profitInput = document.querySelector('input[name="profit"]');
+
+    // حساب إجمالي المبلغ المطلوب للمورد
+    const totalAmount = (totalQtyAdded * supplyCost).toFixed(2);
+    if(totalDisplay) totalDisplay.value = totalAmount;
+    
+    if(paidInput && !paidInput.dataset.userEdited) {
+        paidInput.value = totalAmount;
+    }
+
+    // حساب الربح
+    if (profitInput) {
+        profitInput.value = (unitPrice - supplyCost).toFixed(2);
+    }
+
+    checkDebt();
+}
 
     function checkDebt() {
-        const totalDisplay = document.getElementById('calc_total_display');
-        const paidInput = document.getElementById('paid_amount_input');
+        const total = parseFloat(document.getElementById('calc_total_display')?.value) || 0;
+        const paid = parseFloat(document.getElementById('paid_amount_input')?.value) || 0;
         const debtHint = document.getElementById('debt_hint');
-
-        const total = parseFloat(totalDisplay?.value) || 0;
-        const paid = parseFloat(paidInput?.value) || 0;
 
         if (debtHint) {
             if (paid < total) {
                 debtHint.style.display = 'block';
-                debtHint.innerText = `المتبقي دين للمورد: ${(total - paid).toFixed(2)} ج.م`;
+                debtHint.innerText = `متبقي مديونية للمورد: ${(total - paid).toFixed(2)} ج.م`;
             } else {
                 debtHint.style.display = 'none';
             }
         }
     }
 
-    // تشغيل الأحداث عند تحميل الصفحة
+    // 7. تهيئة الصفحة عند التحميل
     document.addEventListener('DOMContentLoaded', function() {
         attachQtyListeners();
         
-        document.getElementById('main_supply_cost')?.addEventListener('input', updateFinance);
-        document.getElementById('main_unit_cost')?.addEventListener('input', updateFinance);
-        
-        document.getElementById('paid_amount_input')?.addEventListener('input', function() {
-            this.dataset.userEdited = "true";
-            checkDebt();
+        // مراقبة حقول التكلفة والبيع لتحديث الحسابات
+        ['main_supply_cost', 'main_unit_cost'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', updateFinance);
         });
-    });
-
-    function submitEditAjax() {
-    const form = document.getElementById('editForm');
-    const formData = new FormData(form);
-    
-    fetch(form.action, {
-        method: "POST",
-        body: formData,
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert(data.message);
-            location.reload(); 
-        } else {
-            alert("خطأ: " + data.message);
+        
+        // مراقبة حقل المدفوع لمنع التحديث التلقائي بعد تعديل المستخدم
+        const paidInput = document.getElementById('paid_amount_input');
+        if(paidInput) {
+            paidInput.addEventListener('input', function() {
+                this.dataset.userEdited = "true";
+                checkDebt();
+            });
         }
-    })
-    .catch(err => alert("حدث خطأ أثناء التعديل"));
-}
+    });
 </script>
 {% endblock %}

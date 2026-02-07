@@ -12,6 +12,7 @@ urlpatterns = [
     path('rental/print/<int:order_id>/', views.print_rental_contract, name='print_rental_contract'),
     path('customer-management/', views.customer_management, name='customer_management'),
     path('employees-management/', views.employees_management, name='employees_management'),
+    path('inventory/update-quantity/', views.update_inventory_quantity, name='update_inventory_quantity'),
     
 
     # --- 2. إدارة الموردين (دقيقة جداً - يجب أن تسبق الـ IDs العامة) ---
@@ -29,6 +30,8 @@ urlpatterns = [
 
     # --- 3. مسارات العمليات (POST) ---
     path('inventory/add/', views.add_inventory_item, name='add_inventory_item'),
+    path('inventory/update-all/', views.update_inventory_quantity, name='update_inventory_quantity'), 
+    path('inventory/delete/', views.delete_inventory_item, name='delete_inventory_item'),
     path('inventory/update/', views.update_inventory_quantity, name='update_inventory'),
     path('checkout/cash/', views.cash_checkout, name='cash_checkout'),
     path('rental/', views.pos_rental_page, name='pos_rental_page'),
