@@ -442,106 +442,168 @@ def inventory_management(request):
 
 @role_required('manager')
 @require_POST
+
 def add_inventory_item(request):
-    try:
-        supplier_id = request.POST.get('Supplier')
-        sup_phone = request.POST.get('supplier_phone_input')
-        new_sup_name = request.POST.get('new_supplier_name')
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                # 1. معالجة المورد
+                supplier_id = request.POST.get('Supplier')
+                new_supplier_name = request.POST.get('new_supplier_name')
+                supplier_phone = request.POST.get('supplier_phone_input')
+                supplier = None
 
-        # إنشاء المورد الجديد إذا لازم
-        if not supplier_id and sup_phone and new_sup_name:
-            supplier_obj, created = Supplier.objects.get_or_create(
-                mobil=sup_phone, defaults={'name': new_sup_name}
-            )
-            if created:
-                supplier_obj.name = new_sup_name
-                supplier_obj.save()
-            supplier_id = supplier_obj.id
+                if supplier_id:
+                    supplier = Supplier.objects.get(id=supplier_id)
+                elif new_supplier_name and supplier_phone:
+                    supplier, created = Supplier.objects.get_or_create(
+                        phone=supplier_phone,
+                        defaults={'name': new_supplier_name}
+                    )
 
-        quantity = Decimal(request.POST.get('quantity') or 0)
-        supply_cost = Decimal(request.POST.get('supply_cost') or 0)
-        paid_amount = Decimal(request.POST.get('paid_amount') or 0)
-        total_amount = quantity * supply_cost
-        remaining_amount = total_amount - paid_amount
+                # 2. جلب مصفوفات المتغيرات (المقاسات والألوان والكميات)
+                colors_ids = request.POST.getlist('variant_color[]')
+                sizes_ids = request.POST.getlist('variant_size[]')
+                quantities = request.POST.getlist('variant_quantity[]')
 
-        item = InventoryItem.objects.create(
-            name=request.POST.get('name'),
-            category_id=request.POST.get('category'),
-            unit_id=request.POST.get('unit'),
-            quantity=quantity,
-            min_limit=Decimal(request.POST.get('min_limit') or 0),
-            unit_cost=Decimal(request.POST.get('unit_cost') or 0),
-            supply_cost=supply_cost,
-            Supplier_id=supplier_id or None,
-            size_id=request.POST.get('size') or None,
-            color_id=request.POST.get('color') or None,
-            profit=Decimal(request.POST.get('profit') or 0),
-            is_rental=request.POST.get('is_rental') == 'on',
-        )
+                # جلب البيانات المالية العامة
+                supply_cost = Decimal(request.POST.get('supply_cost') or 0)
+                unit_cost = Decimal(request.POST.get('unit_cost') or 0)
+                profit = Decimal(request.POST.get('profit') or 0)
+                paid_amount_total = Decimal(request.POST.get('paid_amount') or 0)
+                
+                total_qty_all = sum(Decimal(q or 0) for q in quantities)
 
-        if item.Supplier and (total_amount > 0 or paid_amount > 0):
-            SupplyLog.objects.create(
-                supplier=item.Supplier,
-                item=item,
-                quantity_added=quantity,
-                cost_at_time=supply_cost,
-                total_amount=total_amount,
-                paid_amount=paid_amount,
-                remaining_amount=remaining_amount
-            )
+                # 3. دوران لحفظ كل متغير كصنف مستقل
+                for c_id, s_id, qty in zip(colors_ids, sizes_ids, quantities):
+                    if not qty or Decimal(qty) <= 0:
+                        continue
 
-        messages.success(request, 'تم إضافة الصنف وتحديث سجلات المورد.')
-        return redirect('inventory_management')
+                    current_qty = Decimal(qty)
+                    
+                    # جلب كائنات الألوان والمقاسات باستخدام مسمياتك الخاصة
+                    color_obj = Colors_choices.objects.get(id=c_id)
+                    size_obj = Size_choices.objects.get(id=s_id)
+                    
+                    base_name = request.POST.get('name')
+                    # دمج الاسم (مثال: قميص - أحمر - XL)
+                    full_name = f"{base_name} - {color_obj.color} - {size_obj.size}"
 
-    except Exception as e:
-        messages.error(request, f'حدث خطأ: {str(e)}')
-        return redirect('inventory_management')
+                    # إنشاء السجل في InventoryItem
+                    item = InventoryItem.objects.create(
+                        name=full_name,
+                        category_id=request.POST.get('category'),
+                        unit_id=request.POST.get('unit'),
+                        quantity=current_qty,
+                        min_limit=Decimal(request.POST.get('min_limit') or 0),
+                        unit_cost=unit_cost,
+                        supply_cost=supply_cost,
+                        Supplier=supplier,
+                        size_id=s_id, # استخدام الـ ID مباشرة من المصفوفة
+                        color_id=c_id,
+                        profit=profit,
+                        is_rental=request.POST.get('is_rental') == 'on',
+                    )
+
+                    # 4. تسجيل حركة التوريد المالية
+                    if supplier:
+                        item_total_cost = current_qty * supply_cost
+                        item_paid = (current_qty / total_qty_all) * paid_amount_total if total_qty_all > 0 else 0
+                        
+                        SupplyLog.objects.create(
+                            supplier=supplier,
+                            item=item,
+                            quantity_added=current_qty,
+                            cost_at_time=supply_cost,
+                            total_amount=item_total_cost,
+                            paid_amount=item_paid,
+                            remaining_amount=item_total_cost - item_paid
+                        )
+
+                messages.success(request, 'تم إضافة الأصناف بنجاح وتحديث المخزن.')
+                return redirect('inventory_management')
+
+        except Exception as e:
+            messages.error(request, f'خطأ في النظام: {str(e)}')
+            return redirect('inventory_management')
+
+    return redirect('inventory_management')
 
 @role_required('manager')
 @require_POST
-def update_inventory_quantity(request):
+def update_inventory_quantity(request): # حافظنا على نفس اسم الوظيفة بناءً على طلبك
     if request.method == "POST":
         item_id = request.POST.get('item_id')
         
-        # دالة تنظيف الأرقام
+        # دالة تنظيف الأرقام كما هي في كودك
         def clean_decimal(val):
             if not val: return Decimal('0')
             clean_val = "".join(filter(lambda x: x in "0123456789.", str(val)))
             return Decimal(clean_val) if clean_val else Decimal('0')
 
         try:
+            # جلب العنصر المراد تعديله
+            item = get_object_or_404(InventoryItem, id=item_id)
+
+            # 1. تعديل البيانات النصية والأساسية
+            item.name = request.POST.get('name', item.name)
+            
+            # تحديث المفاتيح الأجنبية (Foreign Keys) مع الحفاظ على مسميات الموديلات
+            if request.POST.get('category'):
+                item.category_id = request.POST.get('category')
+            if request.POST.get('unit'):
+                item.unit_id = request.POST.get('unit')
+            if request.POST.get('size'):
+                item.size_id = request.POST.get('size')
+            if request.POST.get('color'):
+                item.color_id = request.POST.get('color')
+
+            # 2. تعديل البيانات المالية
+            item.supply_cost = clean_decimal(request.POST.get('supply_cost'))
+            item.unit_cost = clean_decimal(request.POST.get('unit_cost'))
+            item.min_limit = clean_decimal(request.POST.get('min_limit'))
+            
+            # إعادة حساب الربح بناءً على القيم الجديدة
+            item.profit = item.unit_cost - item.supply_cost
+
+            # 3. تعديل الكمية مباشرة (وليس إضافة)
+            # إذا كنت تريد تعديل الكمية الكلية الموجودة في الجدول
+            if request.POST.get('quantity'):
+                item.quantity = clean_decimal(request.POST.get('quantity'))
+
+            # 4. حالة الإيجار
+            item.is_rental = request.POST.get('is_rental') == 'on'
+
+            # حفظ كل التعديلات في قاعدة البيانات
+            item.save()
+
+            # 5. تسجيل حركة توريد إذا كان هناك "كمية مضافة" (اختياري)
+            # إذا كان الفورم يحتوي على حقل "quantity_added" لإضافة كمية جديدة للمخزن الحالي
             qty_added = clean_decimal(request.POST.get('quantity_added'))
             paid_amount = clean_decimal(request.POST.get('paid_amount'))
             
-            item = get_object_or_404(InventoryItem, id=item_id)
-
             if qty_added > 0:
-                # 1. تحديث الكمية في المخزن (InventoryItem)
-                item.quantity += qty_added
+                item.quantity += qty_added # إضافة على الكمية الحالية
                 item.save()
-
-                # 2. تسجيل العملية في سجل التوريد (SupplyLog)
-                # الموديل سيتكفل بحساب الإجمالي والديون في دالة save() الخاصة به
+                
                 if item.Supplier:
                     SupplyLog.objects.create(
-                        supplier=item.Supplier,  # تأكدنا أنها بحرف صغير كما في الموديل
+                        supplier=item.Supplier,
                         item=item,
                         quantity_added=qty_added,
-                        cost_at_time=item.supply_cost, # السعر المسجل في الصنف
+                        cost_at_time=item.supply_cost,
                         paid_amount=paid_amount
                     )
-                    # ملاحظة: مديونية المورد في موديلك تُحسب عبر @property (Sum) 
-                    # لذا لا حاجة لتحديث حقل debt يدوياً إذا لم يكن موجوداً كحقل ثابت.
 
-                return JsonResponse({'status': 'success', 'message': 'تم تحديث المخزون وسجل المورد بنجاح'})
-            
-            return JsonResponse({'status': 'error', 'message': 'يرجى إدخال كمية صحيحة'}, status=400)
+            return JsonResponse({
+                'status': 'success', 
+                'message': f'تم تحديث بيانات الصنف "{item.name}" بنجاح'
+            })
 
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': f'خطأ: {str(e)}'}, status=400)
+            return JsonResponse({'status': 'error', 'message': f'حدث خطأ: {str(e)}'}, status=400)
 
-    return JsonResponse({'status': 'error', 'message': 'طلب غير مسموح'}, status=405)# ================= SUPPLIER MANAGEMENT =================
-
+    return JsonResponse({'status': 'error', 'message': 'طلب غير مسموح'}, status=405)
 @role_required('manager')
 def supplies_management(request):
     if request.method == "POST":
