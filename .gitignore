@@ -20,3 +20,5 @@ dist/
 # Env
 .env
 .env.*
+
+**/settings.py
