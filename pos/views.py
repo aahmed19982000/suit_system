@@ -457,7 +457,7 @@ def add_inventory_item(request):
                     supplier = Supplier.objects.get(id=supplier_id)
                 elif new_supplier_name and supplier_phone:
                     supplier, created = Supplier.objects.get_or_create(
-                        phone=supplier_phone,
+                        mobil=supplier_phone,
                         defaults={'name': new_supplier_name}
                     )
 
